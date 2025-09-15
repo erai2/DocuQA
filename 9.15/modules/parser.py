@@ -17,10 +17,7 @@ DDL = {
     "rules": "CREATE TABLE IF NOT EXISTS rules (rule_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
     "cases": "CREATE TABLE IF NOT EXISTS cases (case_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
     "concepts": "CREATE TABLE IF NOT EXISTS concepts (concept_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
-    "case_rules_link": """
-    CREATE TABLE IF NOT EXISTS case_rules_link (
-      case_id TEXT, rule_id TEXT, PRIMARY KEY (case_id, rule_id)
-    );"""
+    "case_rules_link": "CREATE TABLE IF NOT EXISTS case_rules_link (case_id TEXT, rule_id TEXT, PRIMARY KEY (case_id, rule_id));"
 }
 
 def init_db():
@@ -48,14 +45,14 @@ def parse_text_to_chunks(text: str) -> List[Dict[str, Any]]:
         chunks.append({"id": chunk_id, "type": block_type, "title": title, "content": content})
     return chunks
 
-def extract_rule_links(case_content: str) -> List[str]:
+def extract_rule_links(case_content: str):
     match = re.search(r'\(규칙:\s*([^\)]+)\)', case_content)
     if match:
         return [r.strip() for r in match.group(1).split(',')]
     return []
 
 # === chunk → DataFrame 변환 ===
-def process_chunks_to_dataframes(chunks: List[Dict[str, Any]]) -> Dict[str, pd.DataFrame]:
+def process_chunks_to_dataframes(chunks: List[Dict[str, Any]]):
     data = {"cases": [], "rules": [], "concepts": []}
     case_rule_links = []
     for ch in chunks:
