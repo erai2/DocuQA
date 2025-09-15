@@ -3,8 +3,8 @@ import os, re, glob, sqlite3, shutil
 import pandas as pd
 from typing import List, Dict, Any
 from langchain_chroma import Chroma
+from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.docstore.document import Document
 
 # === 경로 설정 ===
 INPUT_DIR = "data/raw_docs"
