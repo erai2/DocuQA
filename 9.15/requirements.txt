@@ -1,0 +1,4 @@
+streamlit
+python-docx
+sentence-transformers
+faiss-cpu
