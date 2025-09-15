@@ -1,7 +1,6 @@
 streamlit
-sqlite3-bro
 pandas
 sentence-transformers
 faiss-cpu
-langchain
-langchain-community
+langchain==0.2.7
+langchain-community==0.2.7
