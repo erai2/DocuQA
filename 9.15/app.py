@@ -2,7 +2,7 @@ import streamlit as st
 import os, sqlite3, pandas as pd
 from parser import build_databases   # 같은 폴더의 parser.py
 
-DB_PATH = "data/suam.db"
+DB_PATH = "data/suri.db"
 RAW_DIR = "data/raw_docs"
 os.makedirs(RAW_DIR, exist_ok=True)
 
