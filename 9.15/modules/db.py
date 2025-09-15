@@ -20,9 +20,14 @@ def init_db():
 def insert_doc(filename, category, content):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("INSERT INTO docs(filename, category, content) VALUES (?,?,?)",
-                (filename, category, content))
-    conn.commit()
+    # 중복 방지 (같은 내용이 이미 있으면 패스)
+    cur.execute("SELECT 1 FROM docs WHERE content=? LIMIT 1", (content,))
+    if not cur.fetchone():
+        cur.execute(
+            "INSERT INTO docs(filename, category, content) VALUES (?,?,?)",
+            (filename, category, content)
+        )
+        conn.commit()
     conn.close()
 
 def search_docs(keyword, top_k=5):
