@@ -9,8 +9,8 @@ from modules.db import init_db
 # 🔑 실행 시 폴더 자동 생성
 os.makedirs("data/raw_docs", exist_ok=True)
 
-st.set_page_config(page_title="수암명리 DB 챗봇", layout="wide")
-st.title("🔮 수암명리 DB 챗봇")
+st.set_page_config(page_title="suri DB 챗봇", layout="wide")
+st.title("🔮 siro DB 챗봇")
 
 DB_PATH = "data/suam.db"
 
