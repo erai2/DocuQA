@@ -1,6 +1,6 @@
 import streamlit as st
 import os, sqlite3, pandas as pd
-from modules.parser import build_databases   # 같은 폴더의 parser.py
+from parser import build_databases   # 같은 폴더의 parser.py
 
 DB_PATH = "data/suri.db"
 RAW_DIR = "data/raw_docs"
