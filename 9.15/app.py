@@ -4,6 +4,7 @@ import sqlite3
 import pandas as pd
 from modules.parser import parse_docx_to_db
 from modules.chatbot import answer
+from modules.db import init_db
 
 # 🔑 실행 시 폴더 자동 생성
 os.makedirs("data/raw_docs", exist_ok=True)
@@ -12,6 +13,13 @@ st.set_page_config(page_title="수암명리 DB 챗봇", layout="wide")
 st.title("🔮 수암명리 DB 챗봇")
 
 DB_PATH = "data/suam.db"
+
+# 0. DB 리셋 버튼
+if st.button("🗑 DB 리셋"):
+    if os.path.exists(DB_PATH):
+        os.remove(DB_PATH)          # 파일 삭제
+    init_db()                        # 새 DB 생성
+    st.success("✅ DB가 초기화되었습니다.")
 
 # 1. 문서 업로드 → DB 저장
 uploaded = st.file_uploader("📂 문서를 업로드하세요 (Book1~6, txt/docx)", type=["docx","txt"])
