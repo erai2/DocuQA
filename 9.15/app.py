@@ -2,49 +2,41 @@ import streamlit as st
 import os
 import sqlite3
 import pandas as pd
-from modules.parser import parse_docx_to_db
-from modules.chatbot import answer
-from modules.db import init_db
-
-# 🔑 실행 시 폴더 자동 생성
-os.makedirs("data/raw_docs", exist_ok=True)
-
-st.set_page_config(page_title="suri DB 챗봇", layout="wide")
-st.title("🔮 siro DB 챗봇")
+from parser import build_databases   # 통합된 parser.py 불러오기
 
 DB_PATH = "data/suam.db"
+RAW_DIR = "data/raw_docs"
+os.makedirs(RAW_DIR, exist_ok=True)
 
-# 0. DB 리셋 버튼
-if st.button("🗑 DB 리셋"):
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)          # 파일 삭제
-    init_db()                        # 새 DB 생성
-    st.success("✅ DB가 초기화되었습니다.")
+st.set_page_config(page_title="수암명리 DB 챗봇", layout="wide")
+st.title("🔮 수암명리 DB 챗봇")
 
-# 1. 문서 업로드 → DB 저장
-uploaded = st.file_uploader("📂 문서를 업로드하세요 (Book1~6, txt/docx)", type=["docx","txt"])
+# 0. DB 재구축 버튼
+if st.button("🛠 DB 재구축 (raw_docs 폴더 스캔)"):
+    success = build_databases()
+    if success:
+        st.success("✅ DB & Vector DB 재구축 완료")
+    else:
+        st.error("⚠️ raw_docs 폴더에 처리할 파일이 없습니다.")
+
+# 1. 문서 업로드 → raw_docs에 저장
+uploaded = st.file_uploader("📂 문서를 업로드하세요 (txt/md)", type=["txt","md"])
 if uploaded:
-    save_path = os.path.join("data/raw_docs", uploaded.name)
+    save_path = os.path.join(RAW_DIR, uploaded.name)
     with open(save_path, "wb") as f:
         f.write(uploaded.read())
-    parse_docx_to_db(save_path)
-    st.success(f"✅ {uploaded.name} → DB 반영 완료")
+    st.success(f"✅ {uploaded.name} 저장 완료 (DB 재구축 버튼을 눌러 반영하세요)")
 
 # 2. DB 내용 미리보기
 st.subheader("📊 현재 DB 상태")
 if os.path.exists(DB_PATH):
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query(
-        "SELECT id, filename, category, substr(content,1,150) as preview FROM docs ORDER BY id DESC",
-        conn
+        "SELECT * FROM cases LIMIT 20", conn
     )
     conn.close()
     st.dataframe(df)
 else:
-    st.info("아직 DB가 생성되지 않았습니다.")
+    st.info("아직 DB가 없습니다. 👉 '🛠 DB 재구축' 버튼을 눌러 생성하세요.")
 
-# 3. 챗봇 질의응답
-st.subheader("💬 질문하기")
-query = st.text_input("궁금한 점을 입력하세요:")
-if query:
-    st.write(answer(query))
+# 3. 검색/챗봇은 hybrid_search 쪽 연결 가능
