@@ -1,6 +1,6 @@
 import sqlite3, os
 
-DB_PATH = "data/suam.db"
+DB_PATH = "data/suri.db"
 
 def init_db():
     os.makedirs("data", exist_ok=True)
