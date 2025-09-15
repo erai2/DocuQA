@@ -1,4 +1,7 @@
 streamlit
-python-docx
+sqlite3-bro
+pandas
 sentence-transformers
 faiss-cpu
+langchain
+langchain-community
