@@ -5,7 +5,6 @@ from typing import List, Dict, Any
 from langchain_chroma import Chroma
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-
 # === 경로 설정 ===
 INPUT_DIR = "data/raw_docs"
 SQLITE_DB_PATH = "data/suri.db"
