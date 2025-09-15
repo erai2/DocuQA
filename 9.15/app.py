@@ -5,8 +5,11 @@ import pandas as pd
 from modules.parser import parse_docx_to_db
 from modules.chatbot import answer
 
-st.set_page_config(page_title="suri DB chat", layout="wide")
-st.title("🔮 suri DB chat")
+# 🔑 실행 시 폴더 자동 생성
+os.makedirs("data/raw_docs", exist_ok=True)
+
+st.set_page_config(page_title="수암명리 DB 챗봇", layout="wide")
+st.title("🔮 수암명리 DB 챗봇")
 
 DB_PATH = "data/suam.db"
 
