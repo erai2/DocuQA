@@ -1,19 +1,44 @@
-# 📄 Document question answering template
+# 📄 DocuQA 문서 질의응답 대시보드
 
-A simple Streamlit app that answers questions about an uploaded document via OpenAI's GPT-3.5.
+DocuQA는 법률 문서를 업로드하여 구조화된 DB와 벡터 DB로 정리하고, 하이브리드 검색을 통해 질문에 답변해 주는 Streamlit 대시보드입니다. 문서를 업로드하면 자동으로 사례/규칙/개념 데이터를 추출하고, 관리 탭에서 손쉽게 수정하거나 삭제할 수 있습니다.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://document-question-answering-template.streamlit.app/)
+## 🔧 설치 방법
 
-### How to run it on your own machine
+```bash
+pip install -r requirements.txt
+```
 
-1. Install the requirements
+## ▶️ 실행 방법
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+```bash
+streamlit run streamlit_app.py
+```
 
-2. Run the app
+## ✨ 주요 기능
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+- **문서 업로드 & DB 재구축**: `data/raw_docs/` 폴더에 업로드한 텍스트/마크다운 문서를 분석하여 SQLite DB와 Chroma 기반의 벡터 DB를 생성합니다.
+- **하이브리드 검색 챗봇**: 키워드 검색과 벡터 유사도 검색을 결합하여 관련 문서를 찾아 요약해 줍니다.
+- **데이터 관리**: 추출된 사례/규칙/개념 데이터를 표 형태로 확인하고 바로 수정하거나 삭제할 수 있습니다.
+
+## 🧾 문서 포맷 예시
+
+파서는 `<사례>`, `<규칙>`, `<개념>` 태그와 `id` 속성을 사용하여 문서를 분리합니다.
+
+```xml
+<사례 id="case-1">
+제목
+내용 ... (규칙: rule-1)
+</사례>
+
+<규칙 id="rule-1">
+제목
+내용 ...
+</규칙>
+```
+
+`(규칙: rule-1, rule-2)` 형식으로 참조하면 자동으로 사례-규칙 연결 테이블이 생성됩니다.
+
+## 🔒 보안 안내
+
+문서, DB, 벡터 저장소 등 민감한 산출물은 `.gitignore`에 등록된 `data/`, `exports/` 경로에 저장되어 버전 관리에서 제외됩니다. 필요 시 `.streamlit/secrets.toml` 또는 환경 변수에 민감한 값을 보관하세요.
+

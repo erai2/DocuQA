@@ -1,2 +1,6 @@
 streamlit
-openai
+pandas
+langchain
+langchain-community
+langchain-chroma
+sentence-transformers
