@@ -4,13 +4,13 @@ import os
 from parser import build_databases
 from chat_interface import render_enhanced_chat
 
-DB_PATH = "data/suam.db"
+DB_PATH = "data/su갸.db"
 RAW_DIR = "data/raw_docs"
 os.makedirs(RAW_DIR, exist_ok=True)
 
-st.set_page_config(page_title="수암명리 대시보드", layout="wide")
+st.set_page_config(page_title="suri 대시보드", layout="wide")
 
-st.title("🔮 수암명리 AI 대시보드")
+st.title("🔮 suri AI 대시보드")
 
 # ================================
 # 탭 구성: DB 관리 / 챗봇 / 문서 관리
