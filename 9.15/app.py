@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+from modules.hybrid_search import HybridSearchEngine
 from parser import build_databases
 from chat_interface import render_enhanced_chat
 
