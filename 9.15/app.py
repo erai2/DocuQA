@@ -7,7 +7,7 @@ RAW_DIR = "data/raw_docs"
 os.makedirs(RAW_DIR, exist_ok=True)
 
 st.set_page_config(page_title="DocuQA 9.20", layout="wide")
-st.title("🔮 DocuQA 9.20 (수암명리 DB 챗봇)")
+st.title("🔮 DocuQA 9.20 (DB 챗봇)")
 
 if st.button("🛠 DB 재구축 (raw_docs 폴더 스캔)"):
     if build_databases():
