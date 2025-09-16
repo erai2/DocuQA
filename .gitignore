@@ -132,6 +132,11 @@ ENV/
 env.bak/
 venv.bak/
 
+# Application data directories
+data/
+exports/
+keywords.json
+
 # Spyder project settings
 .spyderproject
 .spyproject
