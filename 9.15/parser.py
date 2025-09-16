@@ -2,15 +2,15 @@
 import os, re, glob, sqlite3, shutil
 import pandas as pd
 from typing import List, Dict, Any
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-# === 경로 설정 ===
+from langchain.docstore.document import Document
+
 INPUT_DIR = "data/raw_docs"
-SQLITE_DB_PATH = "data/suri.db"
+SQLITE_DB_PATH = "data/suam.db"
 VECTOR_DB_DIR = "data/vector_db"
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
-# === DB 초기화 ===
 DDL = {
     "rules": "CREATE TABLE IF NOT EXISTS rules (rule_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
     "cases": "CREATE TABLE IF NOT EXISTS cases (case_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
@@ -27,12 +27,10 @@ def init_db():
         conn.commit()
     print("✅ SQLite DB 초기화 완료")
 
-# === 텍스트 → chunk 파싱 ===
 def parse_text_to_chunks(text: str) -> List[Dict[str, Any]]:
     chunks = []
     pattern = r'(<사례.*?>.*?</사례>|<규칙.*?>.*?</규칙>|<개념.*?>.*?</개념>)'
     blocks = re.findall(pattern, text, re.DOTALL)
-
     for block in blocks:
         block_type = re.match(r'<(\w+)', block).group(1)
         id_match = re.search(r'id="([^"]+)"', block)
@@ -45,19 +43,16 @@ def parse_text_to_chunks(text: str) -> List[Dict[str, Any]]:
 
 def extract_rule_links(case_content: str):
     match = re.search(r'\(규칙:\s*([^\)]+)\)', case_content)
-    if match:
-        return [r.strip() for r in match.group(1).split(',')]
-    return []
+    return [r.strip() for r in match.group(1).split(',')] if match else []
 
-# === chunk → DataFrame 변환 ===
 def process_chunks_to_dataframes(chunks: List[Dict[str, Any]]):
     data = {"cases": [], "rules": [], "concepts": []}
-    case_rule_links = []
+    links = []
     for ch in chunks:
         if ch["type"] == "사례":
             data["cases"].append({"case_id": ch["id"], "title": ch["title"], "content": ch["content"]})
             for r in extract_rule_links(ch["content"]):
-                case_rule_links.append({"case_id": ch["id"], "rule_id": r})
+                links.append({"case_id": ch["id"], "rule_id": r})
         elif ch["type"] == "규칙":
             data["rules"].append({"rule_id": ch["id"], "title": ch["title"], "content": ch["content"]})
         elif ch["type"] == "개념":
@@ -66,10 +61,9 @@ def process_chunks_to_dataframes(chunks: List[Dict[str, Any]]):
         "cases": pd.DataFrame(data["cases"]),
         "rules": pd.DataFrame(data["rules"]),
         "concepts": pd.DataFrame(data["concepts"]),
-        "case_rules_link": pd.DataFrame(case_rule_links),
+        "case_rules_link": pd.DataFrame(links),
     }
 
-# === DB & VectorDB 구축 ===
 def build_databases():
     all_chunks = []
     text_files = glob.glob(os.path.join(INPUT_DIR, "*.txt")) + glob.glob(os.path.join(INPUT_DIR, "*.md"))
@@ -81,7 +75,6 @@ def build_databases():
         with open(file_path, "r", encoding="utf-8") as f:
             all_chunks.extend(parse_text_to_chunks(f.read()))
 
-    # 중복 제거
     unique, seen = [], set()
     for ch in all_chunks:
         if ch["id"] not in seen:
@@ -96,7 +89,6 @@ def build_databases():
                 df.to_sql(name, conn, if_exists="replace", index=False)
     print("✅ SQLite DB 구축 완료")
 
-    # Vector DB
     docs = []
     for name, df in dfs.items():
         if name == "case_rules_link" or df.empty: continue
@@ -108,5 +100,4 @@ def build_databases():
         if os.path.exists(VECTOR_DB_DIR): shutil.rmtree(VECTOR_DB_DIR)
         Chroma.from_documents(docs, embeddings, persist_directory=VECTOR_DB_DIR)
         print("✅ Vector DB 구축 완료")
-
     return True
