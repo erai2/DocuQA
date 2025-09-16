@@ -1,6 +1,7 @@
 streamlit
 pandas
+langchain
+langchain-community
+langchain-chroma
 sentence-transformers
 faiss-cpu
-langchain==0.2.7
-langchain-community==0.2.7
