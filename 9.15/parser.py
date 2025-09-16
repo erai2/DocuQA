@@ -1,13 +1,12 @@
-# parser.py
 import os, re, glob, sqlite3, shutil
 import pandas as pd
 from typing import List, Dict, Any
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import Chroma  # ✅ 수정됨
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.docstore.document import Document
 
 INPUT_DIR = "data/raw_docs"
-SQLITE_DB_PATH = "data/suri.db"
+SQLITE_DB_PATH = "data/suam.db"
 VECTOR_DB_DIR = "data/vector_db"
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
@@ -25,7 +24,6 @@ def init_db():
         for sql in DDL.values():
             cur.execute(sql)
         conn.commit()
-    print("✅ SQLite DB 초기화 완료")
 
 def parse_text_to_chunks(text: str) -> List[Dict[str, Any]]:
     chunks = []
@@ -68,7 +66,6 @@ def build_databases():
     all_chunks = []
     text_files = glob.glob(os.path.join(INPUT_DIR, "*.txt")) + glob.glob(os.path.join(INPUT_DIR, "*.md"))
     if not text_files:
-        print(f"⚠️ '{INPUT_DIR}'에 처리할 텍스트 없음")
         return False
 
     for file_path in text_files:
@@ -87,7 +84,6 @@ def build_databases():
         for name, df in dfs.items():
             if not df.empty:
                 df.to_sql(name, conn, if_exists="replace", index=False)
-    print("✅ SQLite DB 구축 완료")
 
     docs = []
     for name, df in dfs.items():
@@ -99,5 +95,4 @@ def build_databases():
         embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
         if os.path.exists(VECTOR_DB_DIR): shutil.rmtree(VECTOR_DB_DIR)
         Chroma.from_documents(docs, embeddings, persist_directory=VECTOR_DB_DIR)
-        print("✅ Vector DB 구축 완료")
     return True
