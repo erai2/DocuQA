@@ -1,4 +1,3 @@
-# modules/chat_interface.py
 import streamlit as st
 import uuid
 from datetime import datetime
@@ -27,8 +26,7 @@ class EnhancedChatInterface:
                 if msg.role == "assistant" and msg.sources:
                     with st.expander("📚 참고 자료"):
                         for i, src in enumerate(msg.sources):
-                            st.markdown(f"**출처:** {src.get('filename','N/A')}")
-                            st.caption(f"점수: {src.get('hybrid_score',0):.3f}")
+                            st.markdown(f"**출처:** {src.get('source','N/A')}")
                             st.write(src.get("content","")[:300] + "...")
 
         user_input = st.chat_input("질문을 입력하세요:")
@@ -40,6 +38,7 @@ class EnhancedChatInterface:
         with st.spinner("검색 중..."):
             results = self.search_engine.search(text, top_k=5)
             if results:
+                # Use a combined or first result for the main answer
                 answer = results[0]['content'][:500]
             else:
                 answer = "❌ 관련 결과를 찾지 못했습니다."

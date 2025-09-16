@@ -1,8 +1,7 @@
 streamlit
-pandas
-langchain
-langchain-community
+python-docx
 sentence-transformers
 faiss-cpu
-chromadb
-scikit-learn
+langchain
+langchain-community
+langchain-chroma

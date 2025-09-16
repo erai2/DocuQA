@@ -1,29 +1,19 @@
-import os, re, glob, sqlite3, shutil
+import os
+import re
+import glob
+import sqlite3
+import shutil
 import pandas as pd
 from typing import List, Dict, Any
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma  # Fixed import
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.docstore.document import Document
+from modules.database import DDL, init_db, insert_doc_to_sql
 
 INPUT_DIR = "data/raw_docs"
 SQLITE_DB_PATH = "data/suri.db"
 VECTOR_DB_DIR = "data/vector_db"
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-
-DDL = {
-    "rules": "CREATE TABLE IF NOT EXISTS rules (rule_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
-    "cases": "CREATE TABLE IF NOT EXISTS cases (case_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
-    "concepts": "CREATE TABLE IF NOT EXISTS concepts (concept_id TEXT PRIMARY KEY, title TEXT, content TEXT);",
-    "case_rules_link": "CREATE TABLE IF NOT EXISTS case_rules_link (case_id TEXT, rule_id TEXT, PRIMARY KEY (case_id, rule_id));"
-}
-
-def init_db():
-    os.makedirs(os.path.dirname(SQLITE_DB_PATH), exist_ok=True)
-    with sqlite3.connect(SQLITE_DB_PATH) as conn:
-        cur = conn.cursor()
-        for sql in DDL.values():
-            cur.execute(sql)
-        conn.commit()
 
 def parse_text_to_chunks(text: str) -> List[Dict[str, Any]]:
     chunks = []
@@ -39,29 +29,6 @@ def parse_text_to_chunks(text: str) -> List[Dict[str, Any]]:
         chunks.append({"id": chunk_id, "type": block_type, "title": title, "content": content})
     return chunks
 
-def extract_rule_links(case_content: str):
-    match = re.search(r'\(규칙:\s*([^\)]+)\)', case_content)
-    return [r.strip() for r in match.group(1).split(',')] if match else []
-
-def process_chunks_to_dataframes(chunks: List[Dict[str, Any]]):
-    data = {"cases": [], "rules": [], "concepts": []}
-    links = []
-    for ch in chunks:
-        if ch["type"] == "사례":
-            data["cases"].append({"case_id": ch["id"], "title": ch["title"], "content": ch["content"]})
-            for r in extract_rule_links(ch["content"]):
-                links.append({"case_id": ch["id"], "rule_id": r})
-        elif ch["type"] == "규칙":
-            data["rules"].append({"rule_id": ch["id"], "title": ch["title"], "content": ch["content"]})
-        elif ch["type"] == "개념":
-            data["concepts"].append({"concept_id": ch["id"], "title": ch["title"], "content": ch["content"]})
-    return {
-        "cases": pd.DataFrame(data["cases"]),
-        "rules": pd.DataFrame(data["rules"]),
-        "concepts": pd.DataFrame(data["concepts"]),
-        "case_rules_link": pd.DataFrame(links),
-    }
-
 def build_databases():
     all_chunks = []
     text_files = glob.glob(os.path.join(INPUT_DIR, "*.txt")) + glob.glob(os.path.join(INPUT_DIR, "*.md"))
@@ -72,27 +39,28 @@ def build_databases():
         with open(file_path, "r", encoding="utf-8") as f:
             all_chunks.extend(parse_text_to_chunks(f.read()))
 
-    unique, seen = [], set()
-    for ch in all_chunks:
-        if ch["id"] not in seen:
-            unique.append(ch); seen.add(ch["id"])
-
-    dfs = process_chunks_to_dataframes(unique)
+    if not all_chunks:
+        return False
 
     init_db()
-    with sqlite3.connect(SQLITE_DB_PATH) as conn:
-        for name, df in dfs.items():
-            if not df.empty:
-                df.to_sql(name, conn, if_exists="replace", index=False)
-
+    
     docs = []
-    for name, df in dfs.items():
-        if name == "case_rules_link" or df.empty: continue
-        for _, row in df.iterrows():
-            content = "\n".join([f"{k}: {v}" for k, v in row.items()])
-            docs.append(Document(page_content=content, metadata={"source": name}))
+    for chunk in all_chunks:
+        insert_doc_to_sql(chunk['id'], chunk['type'], chunk['title'], chunk['content'])
+        docs.append(Document(page_content=chunk['content'], metadata={"source": chunk['type']}))
+
     if docs:
         embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-        if os.path.exists(VECTOR_DB_DIR): shutil.rmtree(VECTOR_DB_DIR)
+        
+        # Explicitly close any existing ChromaDB connections before removal
+        if os.path.exists(VECTOR_DB_DIR):
+            try:
+                shutil.rmtree(VECTOR_DB_DIR)
+            except PermissionError:
+                print("PermissionError: Failed to remove directory. Please ensure no other process is using it.")
+                return False
+
         Chroma.from_documents(docs, embeddings, persist_directory=VECTOR_DB_DIR)
-    return True
+        return True
+    
+    return False
