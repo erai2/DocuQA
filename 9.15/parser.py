@@ -6,7 +6,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.docstore.document import Document
 
 INPUT_DIR = "data/raw_docs"
-SQLITE_DB_PATH = "data/suam.db"
+SQLITE_DB_PATH = "data/suri.db"
 VECTOR_DB_DIR = "data/vector_db"
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
