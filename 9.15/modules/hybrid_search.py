@@ -6,7 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
-DB_PATH = "data/suam.db"
+DB_PATH = "data/suri.db"
 VECTOR_DB_DIR = "data/vector_db"
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
