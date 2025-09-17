@@ -1,92 +1,77 @@
-# core/database.py
-import os
 import sqlite3
+import os
 import pandas as pd
 
-DB_PATH = "data/saju_data.db"
-CSV_DIR = "data"
+DB_PATH = "data/suam_myeongri.db"
 
-# --- SQLite 기본 연결 ---
-def get_connection():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    return sqlite3.connect(DB_PATH)
-
-# --- 테이블 초기화 ---
-def init_tables():
-    conn = get_connection()
+def ensure_db():
+    """DB 및 테이블 생성"""
+    os.makedirs("data", exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS rules (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        desc TEXT,
+    cur.executescript("""
+    CREATE TABLE IF NOT EXISTS basic_theory (
+        id TEXT PRIMARY KEY,
+        concept TEXT,
+        definition TEXT,
         category TEXT,
-        target TEXT,
-        pattern TEXT,
-        version INTEGER,
-        last_updated TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS concepts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        desc TEXT,
+        reference TEXT
+    );
+    CREATE TABLE IF NOT EXISTS terminology (
+        id TEXT PRIMARY KEY,
+        term TEXT,
+        meaning TEXT,
         category TEXT,
-        version INTEGER,
-        last_updated TEXT
-    )
-    """)
-
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS cases (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT,
+        note TEXT
+    );
+    CREATE TABLE IF NOT EXISTS case_studies (
+        id TEXT PRIMARY KEY,
+        chart TEXT,
         gender TEXT,
-        saju TEXT,
-        details TEXT,
-        category TEXT,
-        last_updated TEXT
-    )
+        analysis TEXT,
+        conclusion TEXT,
+        tags TEXT
+    );
     """)
-
     conn.commit()
     conn.close()
 
-# --- CSV 관리 기능 ---
-def load_csv_files():
-    """data/ 폴더 내 모든 CSV 파일 경로 반환"""
-    os.makedirs(CSV_DIR, exist_ok=True)
-    return [os.path.join(CSV_DIR, f) for f in os.listdir(CSV_DIR) if f.endswith(".csv")]
-
-def save_csv_file(file_path: str, df: pd.DataFrame):
-    """편집된 DataFrame을 CSV 파일로 저장"""
-    df.to_csv(file_path, index=False, encoding="utf-8-sig")
-
-def load_csv_as_df(file_path: str) -> pd.DataFrame:
-    """CSV 파일을 DataFrame으로 불러오기"""
-    return pd.read_csv(file_path)
-
-# --- SQLite ↔ CSV 변환 ---
-def export_table_to_csv(table_name: str, out_path: str):
-    conn = get_connection()
-    df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
-    df.to_csv(out_path, index=False, encoding="utf-8-sig")
+def insert_sample_data():
+    """샘플 데이터 삽입"""
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.executescript("""
+    INSERT OR IGNORE INTO basic_theory VALUES
+    ('BT001', '세력(勢)', '木火勢 vs 金水勢 구도', '기본이론', 'Book2');
+    INSERT OR IGNORE INTO terminology VALUES
+    ('T001', '관인상생', '官이 印을 生하는 구조', '격국', '귀격');
+    INSERT OR IGNORE INTO case_studies VALUES
+    ('C001', '己甲丁癸 / 巳戌巳巳', '남', '木火勢가 癸水를 제압', '관직 성취', '적포구조');
+    """)
+    conn.commit()
     conn.close()
 
-def import_csv_to_table(csv_path: str, table_name: str):
-    conn = get_connection()
-    df = pd.read_csv(csv_path)
+def load_csv_files(folder="data"):
+    """CSV를 {파일명: DataFrame} 형태로 불러오기"""
+    csv_dfs = {}
+    if not os.path.exists(folder):
+        return csv_dfs
+    for file in os.listdir(folder):
+        if file.endswith(".csv"):
+            try:
+                df = pd.read_csv(os.path.join(folder, file))
+                name = os.path.splitext(file)[0]
+                csv_dfs[name] = df
+            except Exception as e:
+                print(f"[ERROR] {file} 읽기 실패: {e}")
+    return csv_dfs
+
+def import_df_to_db(df: pd.DataFrame, table_name: str, db_path: str = DB_PATH):
+    """
+    DataFrame을 SQLite 테이블로 저장
+    """
+    conn = sqlite3.connect(db_path)
     df.to_sql(table_name, conn, if_exists="replace", index=False)
     conn.close()
-
-# --- DataFrame → DB 저장 ---
-def import_df_to_db(table_name: str, df: pd.DataFrame):
-    """DataFrame을 SQLite 테이블에 추가 저장"""
-    if df is None or df.empty:
-        return
-    conn = get_connection()
-    df.to_sql(table_name, conn, if_exists="append", index=False)
-    conn.close()
+    print(f"[INFO] {table_name} 테이블에 데이터 삽입 완료 ✅")
