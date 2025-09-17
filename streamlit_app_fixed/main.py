@@ -6,8 +6,8 @@ from core.database import ensure_db, insert_sample_data, load_csv_files
 from core.ai_engine import generate_ai_response, summarize_with_ai
 from core.parsing import parse_and_store_documents
 
-st.set_page_config(page_title="수암명리 AI 분석 시스템", layout="wide")
-st.title("📊 수암명리 AI 분석 & 데이터 관리")
+st.set_page_config(page_title="suri AI 분석 시스템", layout="wide")
+st.title("📊 suri AI 분석 & 데이터 관리")
 
 # --- 1. 새 문서 업로드 + 파싱 ---
 st.header("📑 새 문서 업로드 및 파싱")
