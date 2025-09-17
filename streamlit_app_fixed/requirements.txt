@@ -1,7 +1,0 @@
-streamlit
-pandas
-openai>=1.0.0
-langchain
-langchain-community
-chromadb
-scikit-learn
