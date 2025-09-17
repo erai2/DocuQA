@@ -24,11 +24,11 @@ if not csv_dfs:
     st.info("CSV 데이터가 없습니다. 먼저 업로드하세요.")
 else:
     for name, df in csv_dfs.items():
-        st.subheader(f"📑 {name}.csv")
-        edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
-        if st.button(f"{name}.csv 저장", key=f"save_{name}"):
-            edited_df.to_csv(f"data/{name}.csv", index=False, encoding="utf-8-sig")
-            st.success(f"{name}.csv 저장 완료 ✅")
+         st.subheader(f"📑 {name}.csv")
+         edited_df = st.data_editor(df, num_rows="dynamic", width="stretch")  # ✅ 최신 문법
+         if st.button(f"{name}.csv 저장", key=f"save_{name}"):
+             edited_df.to_csv(f"data/{name}.csv", index=False, encoding="utf-8-sig")
+             st.success(f"{name}.csv 저장 완료 ✅")
 
 # --- 문서 업로드 ---
 st.header("📑 새 문서 업로드")
