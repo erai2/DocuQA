@@ -6,8 +6,8 @@ from core.database import ensure_db, insert_sample_data, load_csv_files
 from core.ai_engine import generate_ai_response, summarize_with_ai
 from core.parsing import parse_and_store_documents
 
-st.set_page_config(page_title="suri AI 분석 시스템", layout="wide")
-st.title("📊 suri AI 분석 & 데이터 관리")
+st.set_page_config(page_title="suri Q&AI", layout="wide")
+st.title("📊 suri Q&AI")
 
 # --- 1. 새 문서 업로드 + 파싱 ---
 st.header("📑 새 문서 업로드 및 파싱")
@@ -34,7 +34,7 @@ if uploaded_files:
             # 파싱 실행
             parsed_df = parse_and_store_documents(save_path)
 
-            if parsed_df is not None and not parsed_df.empty:
+            if parsed_df is not None and isinstance(parsed_df, pd.DataFrame) and not parsed_df.empty:
                 st.success("✅ 파싱 완료, 결과 확인")
                 st.dataframe(parsed_df, width="stretch")
 
@@ -48,7 +48,7 @@ if uploaded_files:
                 combined.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
                 st.success("📂 parsed_docs.csv 에 반영 완료")
             else:
-                st.warning("⚠️ 파싱 결과가 없습니다.")
+                st.warning(⚠️ 파싱 결과가 없습니다.")
 
 # --- 2. CSV 데이터 관리 ---
 st.header("📂 CSV 데이터 관리")
