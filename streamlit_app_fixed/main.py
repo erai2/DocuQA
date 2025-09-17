@@ -81,11 +81,17 @@ if st.button("CSV 전체 요약"):
     if not csv_dfs:
         st.warning("CSV 데이터가 없습니다.")
     else:
-        combined_text = "\n".join([df.to_string() for df in csv_dfs.values()])
-        summary = summarize_with_ai(combined_text)
-        st.text_area("요약 결과", summary, height=300)
+        try:
+            combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
+        except ValueError as exc:
+            st.error(f"CSV 데이터를 결합하는 중 오류가 발생했습니다: {exc}")
+            combined_df = None
 
-        if st.button("요약 결과 저장"):
-            save_path = "data/summary.csv"
-            pd.DataFrame([{"summary": summary}]).to_csv(save_path, index=False, encoding="utf-8-sig")
-            st.success("요약 결과 저장 완료 ✅")
+        if combined_df is not None:
+            summary = summarize_with_ai(combined_df)
+            st.text_area("요약 결과", summary, height=300)
+
+            if st.button("요약 결과 저장"):
+                save_path = "data/summary.csv"
+                pd.DataFrame([{"summary": summary}]).to_csv(save_path, index=False, encoding="utf-8-sig")
+                st.success("요약 결과 저장 완료 ✅")
