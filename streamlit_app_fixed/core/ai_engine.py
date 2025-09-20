@@ -1,9 +1,13 @@
 # core/ai_engine.py
 import os
+from typing import Union
+
 import pandas as pd
 from openai import OpenAI
+
 from core.rag import search_vector_db
 from core.settings_manager import load_settings
+
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -46,10 +50,37 @@ def generate_ai_response(user_query, db_name="default_db"):
     return answer
 
 
-def summarize_with_ai(csv_path: str, save_path: str = None):
-    """CSV 파일 요약 → Streamlit에서 확인 및 저장 가능"""
-    df = pd.read_csv(csv_path)
-    preview = df.head(20).to_string()
+def _build_preview_from_source(data_source: Union[str, pd.DataFrame]) -> str:
+    """요약에 사용할 데이터 샘플 문자열 생성"""
+
+    if isinstance(data_source, pd.DataFrame):
+        if data_source.empty:
+            return ""
+        return data_source.head(20).to_string()
+
+    if isinstance(data_source, str):
+        potential_path = data_source.strip()
+        if os.path.isfile(potential_path):
+            try:
+                df = pd.read_csv(potential_path)
+            except Exception:
+                # 경로로 처리했으나 실패 시 텍스트 그대로 활용
+                return data_source
+            if df.empty:
+                return ""
+            return df.head(20).to_string()
+        # 파일 경로가 아니면 데이터 샘플 텍스트로 간주
+        return data_source
+
+    raise TypeError("data_source는 문자열 경로/텍스트 또는 pandas.DataFrame 이어야 합니다.")
+
+
+def summarize_with_ai(data_source: Union[str, pd.DataFrame], save_path: str = None):
+    """데이터 소스를 요약하여 반환"""
+
+    preview = _build_preview_from_source(data_source)
+    if not preview.strip():
+        return "요약할 데이터가 없습니다. CSV를 먼저 준비해주세요."
 
     settings = load_settings()
     model = settings.get("model", "gpt-4o-mini")
@@ -59,7 +90,7 @@ def summarize_with_ai(csv_path: str, save_path: str = None):
 
     {preview}
 
-    이 CSV 데이터의 주요 패턴과 요약을 구조적으로 정리해주세요.
+    이 데이터의 주요 패턴과 요약을 구조적으로 정리해주세요.
     """
 
     response = client.chat.completions.create(
