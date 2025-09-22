@@ -92,3 +92,31 @@ def summarize_long_csv(csv_text: str, chunk_size: int = 2000, max_tokens: int = 
     final_summary = summarize_with_ai(combined_text, max_tokens=max_tokens)
 
     return final_summary, part_summaries
+
+def summarize_by_keywords(text: str, keywords: list[str], max_tokens: int = 700):
+    """
+    전체 문서를 읽고 주어진 키워드별로 정리/나열하는 함수.
+    """
+    settings = load_settings()
+    model = settings.get("model", "gpt-4o-mini")
+    temperature = float(settings.get("temperature", 0.3))
+
+    keyword_str = ", ".join(keywords)
+
+    prompt = f"""
+    다음 텍스트를 분석해서, 키워드({keyword_str})별로 내용을 정리해줘.
+    각 키워드마다 관련된 내용을 요약하고, 없으면 '관련 없음'이라고 표시해줘.
+
+    텍스트:
+    {text}
+    """
+
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "너는 문서 요약과 분류 전문가야."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=temperature,
+    )
+    return response["choices"][0]["message"]["content"]
