@@ -4,19 +4,26 @@ import pandas as pd
 from io import StringIO
 
 from core.database import load_csv_files
-from core.ai_engine import generate_ai_response, summarize_with_ai, clean_text_with_ai
+from core.ai_engine import (
+    generate_ai_response,
+    ask_csv_ai,
+    summarize_with_ai,
+    summarize_long_csv,
+    summarize_by_keywords,
+    clean_text_with_ai,
+)
 from core.parsing import parse_and_store_documents
 
 st.set_page_config(page_title="Suri Q&AI", layout="wide")
 st.title("📊 Suri Q&AI")
 
-# --- 1. 새 문서 업로드 + 파싱 ---
+# =============================
+# 1. 새 문서 업로드 및 파싱
+# =============================
 st.header("📑 새 문서 업로드 및 파싱")
 
 uploaded_files = st.file_uploader(
-    "txt/md 파일 업로드", 
-    type=["txt", "md"], 
-    accept_multiple_files=True
+    "txt/md 파일 업로드", type=["txt", "md"], accept_multiple_files=True
 )
 
 if uploaded_files:
@@ -36,14 +43,17 @@ if uploaded_files:
             if parsed_df is not None and isinstance(parsed_df, pd.DataFrame) and not parsed_df.empty:
                 st.success("✅ 파싱 완료, AI 교정 적용 중...")
 
-                # 🔹 DataFrame → CSV 문자열 변환
+                # DataFrame → CSV 문자열 변환
                 raw_text = parsed_df.to_csv(index=False, encoding="utf-8-sig")
 
-                # 🔹 AI 교정
+                # AI 교정
                 cleaned_text = clean_text_with_ai(raw_text)
 
-                # 🔹 교정 결과를 다시 DataFrame으로 변환
-                cleaned_df = pd.read_csv(StringIO(cleaned_text))
+                try:
+                    cleaned_df = pd.read_csv(StringIO(cleaned_text))
+                except Exception as e:
+                    st.error(f"AI 교정 후 CSV 변환 실패: {e}")
+                    cleaned_df = parsed_df
 
                 st.success("✅ AI 교정 완료! 아래에서 직접 수정 후 저장하세요.")
                 edited_df = st.data_editor(cleaned_df, num_rows="dynamic", width="stretch")
@@ -60,7 +70,9 @@ if uploaded_files:
             else:
                 st.warning("⚠️ 파싱 결과가 없습니다.")
 
-# --- 2. CSV 데이터 관리 ---
+# =============================
+# 2. CSV 데이터 관리
+# =============================
 st.header("📂 CSV 데이터 관리")
 csv_dfs = load_csv_files("data")
 
@@ -69,23 +81,47 @@ if not csv_dfs:
 else:
     for name, df in csv_dfs.items():
         st.subheader(f"📑 {name}.csv")
+
+        # 원본 CSV → 문자열 변환
+        csv_text = df.to_csv(index=False, encoding="utf-8-sig")
+
+        if st.button(f"{name}.csv AI 교정 적용", key=f"clean_{name}"):
+            st.info("AI 교정 중...")
+            cleaned_text = clean_text_with_ai(csv_text)
+            try:
+                df = pd.read_csv(StringIO(cleaned_text))
+                st.success("✅ AI 교정 완료! 아래에서 직접 수정 후 저장하세요.")
+            except Exception as e:
+                st.error(f"AI 교정 후 CSV 변환 실패: {e}")
+
         edited_df = st.data_editor(df, num_rows="dynamic", width="stretch")
+
         if st.button(f"{name}.csv 저장", key=f"save_{name}"):
-            edited_df.to_csv(f"data/{name}.csv", index=False, encoding="utf-8-sig")
+            save_path = f"data/{name}.csv"
+            edited_df.to_csv(save_path, index=False, encoding="utf-8-sig")
             st.success(f"{name}.csv 저장 완료 ✅")
 
-# --- 3. AI 상담 (채팅창) ---
+# =============================
+# 3. AI 상담 (문서/CSV Q&A)
+# =============================
 st.header("💬 AI 상담")
 
 query = st.text_input("질문을 입력하세요:", key="user_query")
+option = st.radio("분석 대상 선택", ["문서 기반", "CSV 기반"], horizontal=True)
+
 if st.button("AI 응답 생성"):
     if query.strip():
-        answer = generate_ai_response(query)
+        if option == "문서 기반":
+            answer = generate_ai_response(query)
+        else:
+            answer = ask_csv_ai(query)
         st.markdown(answer)
     else:
         st.warning("질문을 입력하세요.")
 
-# --- 4. CSV 전체 요약 ---
+# =============================
+# 4. CSV 요약
+# =============================
 st.header("📝 CSV 요약")
 if st.button("CSV 전체 요약"):
     if not csv_dfs:
@@ -93,23 +129,18 @@ if st.button("CSV 전체 요약"):
     else:
         try:
             combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
+            csv_text = combined_df.to_csv(index=False, encoding="utf-8-sig")
+            summary, parts = summarize_long_csv(csv_text)
+            st.text_area("CSV 전체 요약 결과", summary, height=300)
+            with st.expander("부분 요약 보기"):
+                for part in parts:
+                    st.markdown(part)
         except ValueError as exc:
-            st.error(f"CSV 데이터를 결합하는 중 오류가 발생했습니다: {exc}")
-            combined_df = None
+            st.error(f"CSV 결합 오류: {exc}")
 
-        if combined_df is not None:
-            # 🔹 DataFrame → CSV 문자열 변환 후 요약
-            csv_text = combined_df.to_csv(index=False)
-            summary = summarize_with_ai(csv_text)
-
-            st.text_area("요약 결과", summary, height=300)
-
-            if st.button("요약 결과 저장"):
-                save_path = "data/summary.csv"
-                pd.DataFrame([{"summary": summary}]).to_csv(save_path, index=False, encoding="utf-8-sig")
-                st.success("요약 결과 저장 완료 ✅")
-
-# --- 5. 키워드별 정리 ---
+# =============================
+# 5. 키워드별 정리
+# =============================
 st.header("🔑 키워드별 문서 정리")
 
 keywords_input = st.text_input("키워드를 콤마(,)로 구분해서 입력하세요 (예: 재물, 혼인, 직장, 건강)")
@@ -118,12 +149,10 @@ if st.button("키워드별 정리 실행"):
         st.warning("CSV 데이터가 없습니다.")
     else:
         combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
-        csv_text = combined_df.to_csv(index=False)
-
+        csv_text = combined_df.to_csv(index=False, encoding="utf-8-sig")
         keywords = [kw.strip() for kw in keywords_input.split(",") if kw.strip()]
         if not keywords:
             st.warning("키워드를 입력하세요.")
         else:
             summary_by_kw = summarize_by_keywords(csv_text, keywords)
             st.text_area("키워드별 정리 결과", summary_by_kw, height=400)
-
