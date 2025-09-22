@@ -134,6 +134,8 @@ venv.bak/
 
 # Application data directories
 data/
+!suam_ai/data/
+!suam_ai/data/rules.json
 exports/
 keywords.json
 
