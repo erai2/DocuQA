@@ -75,7 +75,7 @@ if st.button("AI 응답 생성"):
     else:
         st.warning("질문을 입력하세요.")
 
-# --- CSV 전체 요약 ---
+# --- 4. CSV 전체 요약 ---
 st.header("📝 CSV 요약")
 if st.button("CSV 전체 요약"):
     if not csv_dfs:
@@ -88,10 +88,32 @@ if st.button("CSV 전체 요약"):
             combined_df = None
 
         if combined_df is not None:
-            summary = summarize_with_ai(combined_df)
+            # 🔹 DataFrame → CSV 문자열 변환 후 요약
+            csv_text = combined_df.to_csv(index=False)
+            summary = summarize_with_ai(csv_text)
+
             st.text_area("요약 결과", summary, height=300)
 
             if st.button("요약 결과 저장"):
                 save_path = "data/summary.csv"
                 pd.DataFrame([{"summary": summary}]).to_csv(save_path, index=False, encoding="utf-8-sig")
                 st.success("요약 결과 저장 완료 ✅")
+
+# --- 5. 키워드별 정리 ---
+st.header("🔑 키워드별 문서 정리")
+
+keywords_input = st.text_input("키워드를 콤마(,)로 구분해서 입력하세요 (예: 재물, 혼인, 직장, 건강)")
+if st.button("키워드별 정리 실행"):
+    if not csv_dfs:
+        st.warning("CSV 데이터가 없습니다.")
+    else:
+        combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
+        csv_text = combined_df.to_csv(index=False)
+
+        keywords = [kw.strip() for kw in keywords_input.split(",") if kw.strip()]
+        if not keywords:
+            st.warning("키워드를 입력하세요.")
+        else:
+            summary_by_kw = summarize_by_keywords(csv_text, keywords)
+            st.text_area("키워드별 정리 결과", summary_by_kw, height=400)
+
