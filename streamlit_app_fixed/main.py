@@ -1,9 +1,10 @@
 import streamlit as st
 import os
 import pandas as pd
+from io import StringIO
 
-from core.database import ensure_db, insert_sample_data, load_csv_files
-from core.ai_engine import generate_ai_response, summarize_with_ai
+from core.database import load_csv_files
+from core.ai_engine import generate_ai_response, summarize_with_ai, clean_text_with_ai
 from core.parsing import parse_and_store_documents
 
 st.set_page_config(page_title="Suri Q&AI", layout="wide")
@@ -25,28 +26,37 @@ if uploaded_files:
         st.text_area("파일 내용 미리보기", file_content[:1000], height=200)
 
         if st.button(f"이 문서 파싱하기: {uploaded_file.name}"):
-            # 저장
             save_path = os.path.join("data/raw_docs", uploaded_file.name)
             os.makedirs("data/raw_docs", exist_ok=True)
             with open(save_path, "w", encoding="utf-8") as f:
                 f.write(file_content)
 
-            # 파싱 실행
             parsed_df = parse_and_store_documents(save_path)
 
             if parsed_df is not None and isinstance(parsed_df, pd.DataFrame) and not parsed_df.empty:
-                st.success("✅ 파싱 완료, 결과 확인")
-                st.dataframe(parsed_df, width="stretch")
+                st.success("✅ 파싱 완료, AI 교정 적용 중...")
 
-                # parsed_docs.csv 누적 저장
-                parsed_csv = "data/parsed_docs.csv"
-                if os.path.exists(parsed_csv):
-                    old_df = pd.read_csv(parsed_csv)
-                    combined = pd.concat([old_df, parsed_df], ignore_index=True).drop_duplicates()
-                else:
-                    combined = parsed_df
-                combined.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
-                st.success("📂 parsed_docs.csv 에 반영 완료")
+                # 🔹 DataFrame → CSV 문자열 변환
+                raw_text = parsed_df.to_csv(index=False, encoding="utf-8-sig")
+
+                # 🔹 AI 교정
+                cleaned_text = clean_text_with_ai(raw_text)
+
+                # 🔹 교정 결과를 다시 DataFrame으로 변환
+                cleaned_df = pd.read_csv(StringIO(cleaned_text))
+
+                st.success("✅ AI 교정 완료! 아래에서 직접 수정 후 저장하세요.")
+                edited_df = st.data_editor(cleaned_df, num_rows="dynamic", width="stretch")
+
+                if st.button(f"{uploaded_file.name} 저장", key=f"save_{uploaded_file.name}"):
+                    parsed_csv = "data/parsed_docs.csv"
+                    if os.path.exists(parsed_csv):
+                        old_df = pd.read_csv(parsed_csv)
+                        combined = pd.concat([old_df, edited_df], ignore_index=True).drop_duplicates()
+                    else:
+                        combined = edited_df
+                    combined.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
+                    st.success("📂 parsed_docs.csv 저장 완료 ✅")
             else:
                 st.warning("⚠️ 파싱 결과가 없습니다.")
 
