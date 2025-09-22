@@ -2,7 +2,7 @@ import sqlite3
 import os
 import pandas as pd
 
-DB_PATH = "data/suam_myeongri.db"
+DB_PATH = "data/suri_mi.db"
 
 def ensure_db():
     """DB 및 테이블 생성"""

@@ -34,11 +34,11 @@ def build_databases(data_dir="data/raw_docs", db_dir="data/vector_db"):
 
     # --- SQLite 저장 ---
     if all_cases:
-        import_df_to_db(pd.DataFrame(all_cases), "cases")
+        import_df_to_db("cases", pd.DataFrame(all_cases))
     if all_rules:
-        import_df_to_db(pd.DataFrame(all_rules), "rules")
+        import_df_to_db("rules", pd.DataFrame(all_rules))
     if all_concepts:
-        import_df_to_db(pd.DataFrame(all_concepts), "concepts")
+        import_df_to_db("concepts", pd.DataFrame(all_concepts))
 
     # --- VectorDB 빌드 ---
     texts = []
