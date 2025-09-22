@@ -3,7 +3,9 @@ import os
 import pandas as pd
 from io import StringIO
 
-from core.database import load_csv_files
+# Core 모듈
+from core.database import ensure_db, insert_csv_to_db, load_csv_from_db, load_csv_files
+from core.hybrid_search import hybrid_search
 from core.ai_engine import (
     generate_ai_response,
     ask_csv_ai,
@@ -14,8 +16,11 @@ from core.ai_engine import (
 )
 from core.parsing import parse_and_store_documents
 
+# =============================
+# 페이지 기본 설정
+# =============================
 st.set_page_config(page_title="Suri Q&AI", layout="wide")
-st.title("📊 Suri Q&AI")
+st.title("📊 Suri Q&AI (고급 확장 버전)")
 
 # =============================
 # 1. 새 문서 업로드 및 파싱
@@ -65,8 +70,14 @@ if uploaded_files:
                         combined = pd.concat([old_df, edited_df], ignore_index=True).drop_duplicates()
                     else:
                         combined = edited_df
+
                     combined.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
                     st.success("📂 parsed_docs.csv 저장 완료 ✅")
+
+                    # 🔹 DB에도 반영
+                    ensure_db()
+                    insert_csv_to_db(combined, table_name="parsed_docs")
+                    st.success("📦 DB에도 저장 완료 ✅")
             else:
                 st.warning("⚠️ 파싱 결과가 없습니다.")
 
@@ -75,6 +86,14 @@ if uploaded_files:
 # =============================
 st.header("📂 CSV 데이터 관리")
 csv_dfs = load_csv_files("data")
+
+# 🔹 DB 불러오기 기능
+if st.button("DB에서 불러오기"):
+    ensure_db()
+    db_df = load_csv_from_db("parsed_docs")
+    if db_df is not None and not db_df.empty:
+        st.subheader("📦 DB 불러오기 결과")
+        st.dataframe(db_df, width="stretch")
 
 if not csv_dfs:
     st.info("CSV 데이터가 없습니다. 먼저 업로드/파싱을 진행하세요.")
@@ -101,20 +120,27 @@ else:
             edited_df.to_csv(save_path, index=False, encoding="utf-8-sig")
             st.success(f"{name}.csv 저장 완료 ✅")
 
+            # DB에도 저장
+            ensure_db()
+            insert_csv_to_db(edited_df, table_name=name)
+            st.success(f"📦 {name} → DB 저장 완료 ✅")
+
 # =============================
-# 3. AI 상담 (문서/CSV Q&A)
+# 3. AI 상담 (벡터/하이브리드 검색)
 # =============================
 st.header("💬 AI 상담")
 
 query = st.text_input("질문을 입력하세요:", key="user_query")
-option = st.radio("분석 대상 선택", ["문서 기반", "CSV 기반"], horizontal=True)
+search_mode = st.radio("검색 모드 선택", ["벡터 검색", "하이브리드 검색"], horizontal=True)
 
 if st.button("AI 응답 생성"):
     if query.strip():
-        if option == "문서 기반":
-            answer = generate_ai_response(query)
+        if search_mode == "하이브리드 검색":
+            docs = hybrid_search(query, db_dir="data/vector_db", k=5)
+            context = "\n\n".join([d.page_content for d in docs])
+            answer = generate_ai_response(f"{query}\n\n참고자료:\n{context}")
         else:
-            answer = ask_csv_ai(query)
+            answer = generate_ai_response(query)
         st.markdown(answer)
     else:
         st.warning("질문을 입력하세요.")
