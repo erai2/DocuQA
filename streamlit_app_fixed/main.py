@@ -9,7 +9,6 @@ from core.hybrid_search import hybrid_search
 from core.ai_engine import (
     generate_ai_response,
     ask_csv_ai,
-    summarize_with_ai,
     summarize_long_csv,
     summarize_by_keywords,
     clean_text_with_ai,
@@ -20,7 +19,7 @@ from core.parsing import parse_and_store_documents
 # 페이지 기본 설정
 # =============================
 st.set_page_config(page_title="Suri Q&AI", layout="wide")
-st.title("📊 Suri Q&AI (고급 확장 버전)")
+st.title("📊 Suri Q&AI (최신 OpenAI API 버전)")
 
 # =============================
 # 1. 새 문서 업로드 및 파싱
