@@ -1,17 +1,39 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
-  <title>DocuQA App v2</title>
-  <script src="script.js"></script>
+  <title>DocuQA App v3</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
 </head>
+
 <body>
-  <h1>DocuQA Demo v2</h1>
-  <button onclick="loadRules()">규칙 불러오기</button>
-  <div id="rules-container"></div>
-  <hr>
-  <input type="text" id="question" placeholder="질문 입력">
-  <button onclick="askQuestion()">질문하기</button>
-  <div id="answer"></div>
+
+  <header>
+    <h1>📘 DocuQA</h1>
+    <p>Docu Q&AI & GPT 질의 응답</p>
+  </header>
+
+  <section class="card">
+    <h2>📚 규칙 보기</h2>
+    <button onclick="loadRules()">규칙 불러오기</button>
+    <div id="rules-container"></div>
+  </section>
+
+  <section class="card">
+    <h2>💬 질문하기</h2>
+    <div style="display: flex; gap: 0.5rem;">
+      <input type="text" id="question" placeholder="질문을 입력하세요">
+      <button onclick="askQuestion()">전송</button>
+    </div>
+    <div id="answer" style="margin-top:1rem;"></div>
+  </section>
+
+  <footer>
+    ⓒ 2025 DocuQA Prototype
+  </footer>
+
 </body>
+
 </html>
