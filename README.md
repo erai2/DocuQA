@@ -1,4 +1,4 @@
-# 📘 수암명리 AI 해석기 (DocuQA 확장)
+# 📘 AI 해석기 (DocuQA 확장)
 
 이 저장소는 기존 DocuQA 실험에 더해 **수암명리 룰셋 + LLM 파이프라인**을 제공합니다. `suam_ai` 디렉터리에는 Streamlit UI와 FastAPI API 서버, 룰셋 로더가 포함되어 있으며, 배포 전 단계에서 오류 없이 실행할 수 있도록 구성되었습니다.
 
@@ -6,7 +6,7 @@
 
 ```
 DocuQA/
-├── suam_ai/              # 수암명리 파이프라인 (주요 작업 디렉터리)
+├── suri_ai/              # 수리 파이프라인 (주요 작업 디렉터리)
 │   ├── app.py            # Streamlit UI
 │   ├── main.py           # FastAPI 진입점
 │   ├── core/             # 룰셋/컨텍스트/LLM 유틸리티
