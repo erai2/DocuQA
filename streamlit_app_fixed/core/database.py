@@ -2,7 +2,7 @@ import os
 import sqlite3
 import pandas as pd
 
-DB_PATH = "suam_myeongri.db"
+DB_PATH = "suri_m.db"
 
 # =============================
 # 1. DB 초기화
