@@ -47,6 +47,13 @@ ensure_db()
 # =============================
 st.header("📑 새 문서 업로드 및 파싱")
 
+# 파서 모드 선택
+parser_mode = st.radio(
+    "파서 모드 선택",
+    ["1단계: 규칙 기반 (빠름)", "2단계: AI 보조 (정밀)", "3단계: Hybrid (효율적)"],
+    horizontal=True
+)
+
 uploaded_files = st.file_uploader(
     "txt/md 파일 업로드", type=["txt", "md"], accept_multiple_files=True
 )
@@ -62,9 +69,29 @@ if uploaded_files:
             with open(save_path, "w", encoding="utf-8") as f:
                 f.write(file_content)
 
-            parsed_df = parse_and_store_documents(save_path)
+            # 🔹 파서 모드 분기
+            rows = []
+            if "규칙 기반" in parser_mode:
+                from core.parsing import parse_document
+                cases, rules, concepts = parse_document(file_content)
+            elif "AI 보조" in parser_mode:
+                from core.parse_document_ml import parse_document_ml
+                cases, rules, concepts = parse_document_ml(file_content)
+            else:  # Hybrid
+                from core.parse_document_hybrid import parse_document_hybrid
+                cases, rules, concepts = parse_document_hybrid(file_content)
 
-            if parsed_df is not None and isinstance(parsed_df, pd.DataFrame) and not parsed_df.empty:
+            # 결과 → DataFrame 변환
+            for c in cases:
+                rows.append({"type": "case", "id": c["id"], "content": c.get("detail", "")})
+            for r in rules:
+                rows.append({"type": "rule", "id": r["id"], "content": r.get("desc", "")})
+            for c in concepts:
+                rows.append({"type": "concept", "id": c["id"], "content": c.get("desc", "")})
+
+            parsed_df = pd.DataFrame(rows)
+
+            if parsed_df is not None and not parsed_df.empty:
                 st.success("✅ 파싱 완료, AI 교정 적용 중...")
 
                 raw_text = parsed_df.to_csv(index=False, encoding="utf-8-sig")
