@@ -1,72 +1,40 @@
-import re
-import pandas as pd
-from typing import List, Tuple
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+# core/parse_document_ml.py
+import openai
 
-# =============================
-# 1. 간단한 학습용 데이터셋 (라벨링 필요)
-# =============================
-# 실제 프로젝트에서는 CSV나 DB에서 불러오는 게 좋음
-TRAIN_DATA = [
-    ("이 사례는 혼인 파탄 구조를 보여준다.", "case"),
-    ("사례 1: 재물 손실 응기", "case"),
-    ("다음 규칙에 따라 해석해야 한다.", "rule"),
-    ("관성은 반드시 인성과 함께 작용해야 한다는 규칙", "rule"),
-    ("관성의 정의는 직장·명예와 관련된다.", "concept"),
-    ("록과 원신의 개념을 먼저 이해해야 한다.", "concept"),
-]
-
-# =============================
-# 2. ML 파이프라인 (TF-IDF + LogisticRegression)
-# =============================
-def train_model(train_data=TRAIN_DATA) -> Pipeline:
-    texts, labels = zip(*train_data)
-    X_train, X_test, y_train, y_test = train_test_split(
-        texts, labels, test_size=0.2, random_state=42
-    )
-
-    pipeline = Pipeline([
-        ("tfidf", TfidfVectorizer(max_features=2000, ngram_range=(1, 2))),
-        ("clf", LogisticRegression(max_iter=200))
-    ])
-
-    pipeline.fit(X_train, y_train)
-
-    # 테스트 출력
-    y_pred = pipeline.predict(X_test)
-    print("[INFO] 샘플 데이터 성능:")
-    print(classification_report(y_test, y_pred))
-
-    return pipeline
-
-MODEL = train_model()
-
-# =============================
-# 3. 문서 파싱 함수
-# =============================
-def parse_document_ml(text: str) -> Tuple[List[dict], List[dict], List[dict]]:
+def parse_document_ml(text: str):
     """
-    문서를 줄 단위로 분리 → ML 분류기로 case/rule/concept 분류
+    AI 기반으로 문서를 규칙/사례/용어로 분류
     """
+    chunks = [p.strip() for p in text.split("\n") if p.strip()]
     cases, rules, concepts = [], [], []
-    lines = text.splitlines()
 
-    for line in lines:
-        clean_line = line.strip()
-        if not clean_line:
-            continue
+    for idx, chunk in enumerate(chunks):
+        prompt = f"""
+        너는 수암명리 텍스트 분류기야.
+        아래 문장이 규칙(rule), 사례(case), 용어(concept) 중 어디에 해당하는지 판정해.
+        - 규칙(rule): 형/충/합/파/천/묘고 등 원리 설명
+        - 사례(case): 실제 사주팔자, 응기 사례
+        - 용어(concept): 록, 원신, 대상, 환상 등 개념 정의
+        문장: {chunk}
+        """
 
-        label = MODEL.predict([clean_line])[0]
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+            )
+            label = response.choices[0].message["content"].strip().lower()
 
-        if label == "case":
-            cases.append({"detail": clean_line})
-        elif label == "rule":
-            rules.append({"desc": clean_line})
-        elif label == "concept":
-            concepts.append({"desc": clean_line})
+            if "rule" in label or "규칙" in label:
+                rules.append({"id": f"rule_{idx}", "desc": chunk})
+            elif "case" in label or "사례" in label:
+                cases.append({"id": f"case_{idx}", "detail": chunk})
+            else:
+                concepts.append({"id": f"concept_{idx}", "desc": chunk})
+
+        except Exception as e:
+            print(f"[ERROR] ML 파싱 실패: {e}")
+            concepts.append({"id": f"concept_{idx}", "desc": chunk})
 
     return cases, rules, concepts
