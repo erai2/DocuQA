@@ -7,8 +7,11 @@ from openai import OpenAI
 from core.rag import search_vector_db
 from core.settings_manager import load_settings
 
+# -------------------------
+# 내부 유틸
+# -------------------------
+def _get_secret(name: str):
     """Streamlit secrets에서 값을 안전하게 가져온다."""
-
     secrets_obj = getattr(st, "secrets", None)
     if secrets_obj is not None:
         getter = getattr(secrets_obj, "get", None)
@@ -17,18 +20,16 @@ from core.settings_manager import load_settings
             if value:
                 return value
     return None
-  
-    """Streamlit secrets 또는 환경 변수에서 OpenAI API 키를 읽어온다."""
 
+def _load_api_key() -> str:
+    """Streamlit secrets 또는 환경 변수에서 OpenAI API 키를 읽어온다."""
     secret_key = _get_secret("OPENAI_API_KEY")
     if secret_key:
         return secret_key
     return os.getenv("OPENAI_API_KEY")
 
-
 def _get_path_setting(env_name: str, default: str) -> str:
     """경로 설정 값을 secrets → 환경 변수 → 기본값 순으로 조회한다."""
-
     secret_value = _get_secret(env_name)
     if secret_value:
         return secret_value
@@ -37,27 +38,22 @@ def _get_path_setting(env_name: str, default: str) -> str:
         return env_value
     return default
 
-
 @lru_cache(maxsize=1)
 def _get_openai_client() -> OpenAI:
-    """OpenAI 클라이언트를 초기화한다.
-
-    키가 존재하지 않을 경우 RuntimeError를 발생시켜 호출 측에서 사용자에게
-    친절한 메시지를 전달할 수 있도록 한다.
-    """
-
+    """OpenAI 클라이언트를 초기화한다."""
     api_key = _load_api_key()
     if not api_key:
         raise RuntimeError(
-            "OpenAI API 키가 설정되어 있지 않습니다. 환경 변수 OPENAI_API_KEY 또는 "
-            ".streamlit/secrets.toml을 확인해주세요."
+            "OpenAI API 키가 설정되어 있지 않습니다. "
+            "환경 변수 OPENAI_API_KEY 또는 .streamlit/secrets.toml을 확인해주세요."
         )
     try:
         return OpenAI(api_key=api_key)
-    except Exception as exc:  # pragma: no cover - 안전 장치
-        raise RuntimeError(f"OpenAI 클라이언트 초기화에 실패했습니다: {exc}") from exc
-    """OpenAI ChatCompletion 호출을 공통 처리한다."""
+    except Exception as exc:
+        raise RuntimeError(f"OpenAI 클라이언트 초기화 실패: {exc}") from exc
 
+def _chat_completion(messages, model="gpt-4o-mini", temperature=0.3, **kwargs) -> str:
+    """OpenAI ChatCompletion 호출 공통 처리"""
     try:
         client = _get_openai_client()
         response = client.chat.completions.create(
@@ -70,16 +66,15 @@ def _get_openai_client() -> OpenAI:
     except RuntimeError as exc:
         logging.warning("OpenAI API 키 오류: %s", exc)
         return f"⚠️ {exc}"
-    except Exception as exc:  # pragma: no cover - 외부 API 예외 대비
+    except Exception as exc:
         logging.exception("OpenAI 호출 중 오류: %s", exc)
-        return f"⚠️ OpenAI 호출 중 오류가 발생했습니다: {exc}"
+        return f"⚠️ OpenAI 호출 중 오류: {exc}"
 
 # -------------------------
 # 1. 문서 기반 Q&A
 # -------------------------
 def generate_ai_response(user_query: str) -> str:
     """문서 기반 Q&A"""
-
     settings = load_settings()
     model = settings.get("model", "gpt-4o-mini")
     temperature = float(settings.get("temperature", 0.3))
@@ -107,7 +102,6 @@ def generate_ai_response(user_query: str) -> str:
 # -------------------------
 def ask_csv_ai(user_query: str) -> str:
     """CSV 데이터 기반 Q&A"""
-
     settings = load_settings()
     model = settings.get("model", "gpt-4o-mini")
     temperature = float(settings.get("temperature", 0.3))
@@ -133,7 +127,6 @@ def ask_csv_ai(user_query: str) -> str:
 # -------------------------
 def summarize_with_ai(text: str, max_tokens: int = 500) -> str:
     """단일 텍스트 요약"""
-
     settings = load_settings()
     model = settings.get("model", "gpt-4o-mini")
     temperature = float(settings.get("temperature", 0.3))
@@ -148,10 +141,10 @@ def summarize_with_ai(text: str, max_tokens: int = 500) -> str:
     )
 
 # -------------------------
-# 4. 긴 CSV 요약 (chunk 나눔)
+# 4. 긴 CSV 요약
 # -------------------------
 def summarize_long_csv(csv_text: str, chunk_size: int = 2000, max_tokens: int = 500):
-    """긴 CSV 텍스트를 chunk 단위로 나눠서 부분 요약 → 최종 종합 요약"""
+    """긴 CSV 텍스트를 나눠 부분 요약 → 종합 요약"""
     text_lines = csv_text.splitlines()
     chunks = ["\n".join(text_lines[i:i+chunk_size]) for i in range(0, len(text_lines), chunk_size)]
 
@@ -170,6 +163,7 @@ def summarize_long_csv(csv_text: str, chunk_size: int = 2000, max_tokens: int = 
 # -------------------------
 # 5. 키워드별 정리
 # -------------------------
+def summarize_by_keywords(text: str, keywords: list, max_tokens: int = 500) -> str:
     """전체 문서를 키워드별로 정리"""
     settings = load_settings()
     model = settings.get("model", "gpt-4o-mini")
@@ -191,10 +185,11 @@ def summarize_long_csv(csv_text: str, chunk_size: int = 2000, max_tokens: int = 
         ],
         model=model,
         temperature=temperature,
+        max_tokens=max_tokens,
     )
 
 # -------------------------
-# 6. 텍스트 교정 (띄어쓰기, 오타)
+# 6. 텍스트 교정
 # -------------------------
 def clean_text_with_ai(text: str, max_tokens: int = 1000) -> str:
     """텍스트의 띄어쓰기, 맞춤법, 오타를 AI로 자동 교정"""
