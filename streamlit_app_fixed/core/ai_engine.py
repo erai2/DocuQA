@@ -1,16 +1,12 @@
 import logging
 import os
 from functools import lru_cache
-from typing import Dict, List, Optional
-
 import streamlit as st
 from openai import OpenAI
 
 from core.rag import search_vector_db
 from core.settings_manager import load_settings
 
-
-def _get_secret(name: str) -> Optional[str]:
     """Streamlit secrets에서 값을 안전하게 가져온다."""
 
     secrets_obj = getattr(st, "secrets", None)
@@ -21,9 +17,7 @@ def _get_secret(name: str) -> Optional[str]:
             if value:
                 return value
     return None
-
-
-def _load_api_key() -> Optional[str]:
+  
     """Streamlit secrets 또는 환경 변수에서 OpenAI API 키를 읽어온다."""
 
     secret_key = _get_secret("OPENAI_API_KEY")
@@ -62,11 +56,6 @@ def _get_openai_client() -> OpenAI:
         return OpenAI(api_key=api_key)
     except Exception as exc:  # pragma: no cover - 안전 장치
         raise RuntimeError(f"OpenAI 클라이언트 초기화에 실패했습니다: {exc}") from exc
-
-
-def _chat_completion(
-    messages: List[Dict[str, str]], *, model: str, temperature: float, **kwargs
-) -> str:
     """OpenAI ChatCompletion 호출을 공통 처리한다."""
 
     try:
@@ -181,7 +170,6 @@ def summarize_long_csv(csv_text: str, chunk_size: int = 2000, max_tokens: int = 
 # -------------------------
 # 5. 키워드별 정리
 # -------------------------
-def summarize_by_keywords(text: str, keywords: List[str], max_tokens: int = 700) -> str:
     """전체 문서를 키워드별로 정리"""
     settings = load_settings()
     model = settings.get("model", "gpt-4o-mini")

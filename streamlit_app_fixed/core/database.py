@@ -4,8 +4,6 @@ import os
 import re
 import sqlite3
 from contextlib import closing
-from typing import Dict, Optional
-
 import pandas as pd
 
 DB_PATH = "data/suri_mi.db"
@@ -121,9 +119,6 @@ def insert_csv_to_db(
     with closing(_get_connection(db_path)) as conn:
         df.to_sql(normalized, conn, if_exists=if_exists, index=False)
         conn.commit()
-
-
-def load_csv_from_db(table_name: str, *, db_path: str = DB_PATH) -> Optional[pd.DataFrame]:
     """저장된 테이블을 DataFrame으로 반환한다."""
 
     normalized = _sanitize_table_name(table_name)
