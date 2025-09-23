@@ -2,7 +2,16 @@ import streamlit as st
 import os
 import pandas as pd
 from io import StringIO
-from core.database import ensure_db, insert_csv_to_db, load_csv_from_db, load_csv_files
+
+# =============================
+# core 모듈 불러오기
+# =============================
+from core.database import (
+    ensure_db,
+    insert_csv_to_db,
+    load_csv_from_db,
+    load_csv_files
+)
 from core.hybrid_search import hybrid_search
 from core.ai_engine import (
     generate_ai_response,
@@ -14,10 +23,17 @@ from core.ai_engine import (
 from core.parsing import parse_and_store_documents
 
 # =============================
-# 페이지 기본 설정
+# 초기 세팅
 # =============================
 st.set_page_config(page_title="Suri Q&AI", layout="wide")
 st.title("📊 Suri Q&AI (최신 OpenAI API 버전)")
+
+# 🔹 폴더 초기화
+for path in ["data", "data/raw_docs", "data/vector_db"]:
+    os.makedirs(path, exist_ok=True)
+
+# 🔹 DB 초기화
+ensure_db()
 
 # =============================
 # 1. 새 문서 업로드 및 파싱
@@ -36,7 +52,6 @@ if uploaded_files:
 
         if st.button(f"이 문서 파싱하기: {uploaded_file.name}"):
             save_path = os.path.join("data/raw_docs", uploaded_file.name)
-            os.makedirs("data/raw_docs", exist_ok=True)
             with open(save_path, "w", encoding="utf-8") as f:
                 f.write(file_content)
 
@@ -72,7 +87,6 @@ if uploaded_files:
                     st.success("📂 parsed_docs.csv 저장 완료 ✅")
 
                     # 🔹 DB에도 반영
-                    ensure_db()
                     insert_csv_to_db(combined, table_name="parsed_docs")
                     st.success("📦 DB에도 저장 완료 ✅")
             else:
@@ -86,11 +100,10 @@ csv_dfs = load_csv_files("data")
 
 # 🔹 DB 불러오기 기능
 if st.button("DB에서 불러오기"):
-    ensure_db()
     db_df = load_csv_from_db("parsed_docs")
     if db_df is not None and not db_df.empty:
         st.subheader("📦 DB 불러오기 결과")
-        st.dataframe(db_df, width="stretch")
+        st.dataframe(db_df, use_container_width=True)
 
 if not csv_dfs:
     st.info("CSV 데이터가 없습니다. 먼저 업로드/파싱을 진행하세요.")
@@ -118,7 +131,6 @@ else:
             st.success(f"{name}.csv 저장 완료 ✅")
 
             # DB에도 저장
-            ensure_db()
             insert_csv_to_db(edited_df, table_name=name)
             st.success(f"📦 {name} → DB 저장 완료 ✅")
 
