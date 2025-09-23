@@ -1,7 +1,7 @@
 # core/parse_document_hybrid.py
 import re
 import pandas as pd
-from core.ai_engine import clean_text_with_ai
+from core.ai_utils import clean_text_with_ai
 
 def parse_document_hybrid(text: str):
     """
