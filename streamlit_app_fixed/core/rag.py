@@ -3,8 +3,11 @@ import glob
 import pandas as pd
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from core.parsing import parse_document
-from core.database import insert_csv_to_db   # ✅ 교체
+
+# ✅ ML 기반 파서로 교체
+from core.parse_document_ml import parse_document_ml as parse_document
+from core.database import insert_csv_to_db
+
 
 def build_databases(data_dir="data/raw_docs", db_dir="data/vector_db"):
     """
