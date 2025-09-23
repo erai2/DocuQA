@@ -2,8 +2,6 @@ import streamlit as st
 import os
 import pandas as pd
 from io import StringIO
-
-# Core 모듈
 from core.database import ensure_db, insert_csv_to_db, load_csv_from_db, load_csv_files
 from core.hybrid_search import hybrid_search
 from core.ai_engine import (
