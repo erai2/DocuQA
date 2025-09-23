@@ -1,8 +1,6 @@
 import os
 from typing import Dict, List, Optional, Tuple
-
 import pandas as pd
-
 
 ParsedSection = Dict[str, str]
 
