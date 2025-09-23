@@ -1,26 +1,23 @@
 # core/parse_document_ml.py
 import openai
 
-def parse_document_ml(text: str):
-    """
-    AI 기반으로 문서를 규칙/사례/용어로 분류
-    """
+def parse_document_ml(text: str, model="gpt-4o-mini"):
+    """AI 보조 파서"""
     chunks = [p.strip() for p in text.split("\n") if p.strip()]
     cases, rules, concepts = [], [], []
 
     for idx, chunk in enumerate(chunks):
         prompt = f"""
         너는 수암명리 텍스트 분류기야.
-        아래 문장이 규칙(rule), 사례(case), 용어(concept) 중 어디에 해당하는지 판정해.
+        아래 문장을 규칙(rule), 사례(case), 용어(concept) 중 어디에 해당하는지 판정해.
         - 규칙(rule): 형/충/합/파/천/묘고 등 원리 설명
         - 사례(case): 실제 사주팔자, 응기 사례
         - 용어(concept): 록, 원신, 대상, 환상 등 개념 정의
         문장: {chunk}
         """
-
         try:
             response = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
+                model=model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.0,
             )
