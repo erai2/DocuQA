@@ -37,11 +37,7 @@ ensure_db()
 # =============================
 # 페이지 라우팅
 # =============================
-PAGES = {
-    "문서 관리": "main_page",
-    "인물 프로필": profiles_page,
-}
-page_choice = st.sidebar.radio("📌 페이지 선택", list(PAGES.keys()))
+page_choice = st.sidebar.radio("📌 페이지 선택", ["문서 관리", "인물 프로필"])
 
 # =============================
 # 1. 문서 관리 페이지
@@ -95,7 +91,7 @@ if page_choice == "문서 관리":
                     rows.append({"type": "concept", "id": c["id"], "content": c.get("desc", "")})
                 parsed_df = pd.DataFrame(rows)
 
-                if parsed_df is not None and not parsed_df.empty:
+                if not parsed_df.empty:
                     st.success("✅ 파싱 완료, AI 교정 적용 중...")
 
                     raw_text = parsed_df.to_csv(index=False, encoding="utf-8-sig")
@@ -114,7 +110,8 @@ if page_choice == "문서 관리":
                         parsed_csv = "data/parsed_docs.csv"
                         if os.path.exists(parsed_csv):
                             old_df = pd.read_csv(parsed_csv)
-                            combined = pd.concat([old_df, edited_df], ignore_index=True).drop_duplicates()
+                            combined = pd.concat([old_df, edited_df], ignore_index=True)
+                            combined = combined.drop_duplicates(subset=["type", "id", "content"])
                         else:
                             combined = edited_df
 
