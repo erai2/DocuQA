@@ -1,11 +1,10 @@
-# core/rag.py
 import os
 import glob
 import pandas as pd
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from core.parsing import parse_document
-from core.database import import_df_to_db
+from core.database import insert_csv_to_db   # ✅ 교체
 
 def build_databases(data_dir="data/raw_docs", db_dir="data/vector_db"):
     """
@@ -34,11 +33,11 @@ def build_databases(data_dir="data/raw_docs", db_dir="data/vector_db"):
 
     # --- SQLite 저장 ---
     if all_cases:
-        import_df_to_db("cases", pd.DataFrame(all_cases))
+        insert_csv_to_db(pd.DataFrame(all_cases), table_name="cases")
     if all_rules:
-        import_df_to_db("rules", pd.DataFrame(all_rules))
+        insert_csv_to_db(pd.DataFrame(all_rules), table_name="rules")
     if all_concepts:
-        import_df_to_db("concepts", pd.DataFrame(all_concepts))
+        insert_csv_to_db(pd.DataFrame(all_concepts), table_name="concepts")
 
     # --- VectorDB 빌드 ---
     texts = []
