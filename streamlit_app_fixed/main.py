@@ -2,7 +2,12 @@ import streamlit as st
 import os
 import pandas as pd
 from io import StringIO
+from profiles_page import profiles_page
 
+PAGES = {
+    "문서 관리": main_page,
+    "인물 프로필": profiles_page,
+}
 # =============================
 # core 모듈 불러오기
 # =============================
