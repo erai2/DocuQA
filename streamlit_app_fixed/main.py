@@ -20,10 +20,8 @@ from core.ai_engine import (
     summarize_long_csv,
     summarize_by_keywords,
 )
-from core.ai_utils import clean_text_with_ai   # ✅ 분리된 유틸에서 import
+from core.ai_utils import clean_text_with_ai
 from core.rag import build_databases
-
-# 페이지 모듈
 from profiles_page import profiles_page
 
 # =============================
@@ -32,11 +30,8 @@ from profiles_page import profiles_page
 st.set_page_config(page_title="Suri Q&AI", layout="wide")
 st.title("📊 Suri Q&AI (최신 OpenAI API 버전)")
 
-# 폴더 초기화
 for path in ["data", "data/raw_docs", "data/vector_db"]:
     os.makedirs(path, exist_ok=True)
-
-# DB 초기화
 ensure_db()
 
 # =============================
@@ -52,6 +47,7 @@ page_choice = st.sidebar.radio("📌 페이지 선택", list(PAGES.keys()))
 # 1. 문서 관리 페이지
 # =============================
 if page_choice == "문서 관리":
+
     # -------------------------
     # 1-1. 새 문서 업로드 및 파싱
     # -------------------------
@@ -78,7 +74,7 @@ if page_choice == "문서 관리":
                 with open(save_path, "w", encoding="utf-8") as f:
                     f.write(file_content)
 
-                # 파서 모드 분기
+                # 파서 모드 선택
                 rows = []
                 if "규칙 기반" in parser_mode:
                     from core.parsing import parse_document
@@ -90,13 +86,13 @@ if page_choice == "문서 관리":
                     from core.parse_document_hybrid import parse_document_hybrid
                     cases, rules, concepts = parse_document_hybrid(file_content)
 
+                # 결과 → DataFrame
                 for c in cases:
                     rows.append({"type": "case", "id": c["id"], "content": c.get("detail", "")})
                 for r in rules:
                     rows.append({"type": "rule", "id": r["id"], "content": r.get("desc", "")})
                 for c in concepts:
                     rows.append({"type": "concept", "id": c["id"], "content": c.get("desc", "")})
-
                 parsed_df = pd.DataFrame(rows)
 
                 if parsed_df is not None and not parsed_df.empty:
@@ -123,53 +119,66 @@ if page_choice == "문서 관리":
                             combined = edited_df
 
                         combined.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
-                        st.success("📂 parsed_docs.csv 저장 완료 ✅")
+                        st.success(f"📂 parsed_docs.csv 저장 완료 (총 {len(combined)}행) ✅")
 
-                        insert_csv_to_db(combined, table_name="parsed_docs")
-                        st.success("📦 DB에도 저장 완료 ✅")
+                        total_rows = insert_csv_to_db(combined, table_name="parsed_docs")
+                        st.success(f"📦 DB 저장 완료: {total_rows}행 (중복 제거 후)")
                 else:
                     st.warning("⚠️ 파싱 결과가 없습니다.")
 
     # -------------------------
-    # 1-2. CSV 데이터 관리
+    # 1-2. DB 데이터 확인
     # -------------------------
-    st.header("📂 CSV 데이터 관리")
-    csv_dfs = load_csv_files("data")
-
+    st.header("📦 DB 데이터 확인")
     if st.button("DB에서 불러오기"):
         db_df = load_csv_from_db("parsed_docs")
-        if db_df is not None and not db_df.empty:
+        if not db_df.empty:
             st.subheader("📦 DB 불러오기 결과")
             st.dataframe(db_df, use_container_width=True)
-
-    if not csv_dfs:
-        st.info("CSV 데이터가 없습니다. 먼저 업로드/파싱을 진행하세요.")
-    else:
-        for name, df in csv_dfs.items():
-            st.subheader(f"📑 {name}.csv")
-            csv_text = df.to_csv(index=False, encoding="utf-8-sig")
-
-            if st.button(f"{name}.csv AI 교정 적용", key=f"clean_{name}"):
-                st.info("AI 교정 중...")
-                cleaned_text = clean_text_with_ai(csv_text)
-                try:
-                    df = pd.read_csv(StringIO(cleaned_text))
-                    st.success("✅ AI 교정 완료! 아래에서 직접 수정 후 저장하세요.")
-                except Exception as e:
-                    st.error(f"AI 교정 후 CSV 변환 실패: {e}")
-
-            edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
-
-            if st.button(f"{name}.csv 저장", key=f"save_{name}"):
-                save_path = f"data/{name}.csv"
-                edited_df.to_csv(save_path, index=False, encoding="utf-8-sig")
-                st.success(f"{name}.csv 저장 완료 ✅")
-
-                insert_csv_to_db(edited_df, table_name=name)
-                st.success(f"📦 {name} → DB 저장 완료 ✅")
+        else:
+            st.warning("⚠️ DB에 데이터가 없습니다.")
 
     # -------------------------
-    # 1-3. AI 상담
+    # 1-3. CSV 요약
+    # -------------------------
+    st.header("📝 CSV 요약")
+    if st.button("CSV 전체 요약"):
+        csv_dfs = load_csv_files("data")
+        if not csv_dfs:
+            st.warning("CSV 데이터가 없습니다.")
+        else:
+            try:
+                combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
+                csv_text = combined_df.to_csv(index=False, encoding="utf-8-sig")
+                summary, parts = summarize_long_csv(csv_text)
+                st.text_area("CSV 전체 요약 결과", summary, height=300)
+                with st.expander("부분 요약 보기"):
+                    for part in parts:
+                        st.markdown(part)
+            except ValueError as exc:
+                st.error(f"CSV 결합 오류: {exc}")
+
+    # -------------------------
+    # 1-4. 키워드별 정리
+    # -------------------------
+    st.header("🔑 키워드별 문서 정리")
+    keywords_input = st.text_input("키워드를 콤마(,)로 입력 (예: 재물, 혼인, 직장, 건강)")
+    if st.button("키워드별 정리 실행"):
+        csv_dfs = load_csv_files("data")
+        if not csv_dfs:
+            st.warning("CSV 데이터가 없습니다.")
+        else:
+            combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
+            csv_text = combined_df.to_csv(index=False, encoding="utf-8-sig")
+            keywords = [kw.strip() for kw in keywords_input.split(",") if kw.strip()]
+            if not keywords:
+                st.warning("키워드를 입력하세요.")
+            else:
+                summary_by_kw = summarize_by_keywords(csv_text, keywords)
+                st.text_area("키워드별 정리 결과", summary_by_kw, height=400)
+
+    # -------------------------
+    # 1-5. AI 상담
     # -------------------------
     st.header("💬 AI 상담")
     query = st.text_input("질문을 입력하세요:", key="user_query")
@@ -188,43 +197,6 @@ if page_choice == "문서 관리":
             st.warning("질문을 입력하세요.")
 
     # -------------------------
-    # 1-4. CSV 요약
-    # -------------------------
-    st.header("📝 CSV 요약")
-    if st.button("CSV 전체 요약"):
-        if not csv_dfs:
-            st.warning("CSV 데이터가 없습니다.")
-        else:
-            try:
-                combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
-                csv_text = combined_df.to_csv(index=False, encoding="utf-8-sig")
-                summary, parts = summarize_long_csv(csv_text)
-                st.text_area("CSV 전체 요약 결과", summary, height=300)
-                with st.expander("부분 요약 보기"):
-                    for part in parts:
-                        st.markdown(part)
-            except ValueError as exc:
-                st.error(f"CSV 결합 오류: {exc}")
-
-    # -------------------------
-    # 1-5. 키워드별 정리
-    # -------------------------
-    st.header("🔑 키워드별 문서 정리")
-    keywords_input = st.text_input("키워드를 콤마(,)로 입력 (예: 재물, 혼인, 직장, 건강)")
-    if st.button("키워드별 정리 실행"):
-        if not csv_dfs:
-            st.warning("CSV 데이터가 없습니다.")
-        else:
-            combined_df = pd.concat(list(csv_dfs.values()), ignore_index=True)
-            csv_text = combined_df.to_csv(index=False, encoding="utf-8-sig")
-            keywords = [kw.strip() for kw in keywords_input.split(",") if kw.strip()]
-            if not keywords:
-                st.warning("키워드를 입력하세요.")
-            else:
-                summary_by_kw = summarize_by_keywords(csv_text, keywords)
-                st.text_area("키워드별 정리 결과", summary_by_kw, height=400)
-
-    # -------------------------
     # 1-6. DB 빌드
     # -------------------------
     st.header("🛠️ 데이터베이스 빌드")
@@ -237,30 +209,7 @@ if page_choice == "문서 관리":
             st.warning("⚠️ 빌드할 문서가 없습니다.")
 
     # -------------------------
-    # 1-7. Parsed CSV 순서 조정
-    # -------------------------
-    st.header("📂 Parsed CSV 순서 조정")
-    parsed_csv = "data/parsed_docs.csv"
-    if os.path.exists(parsed_csv):
-        df = pd.read_csv(parsed_csv)
-        if "order" not in df.columns:
-            df.insert(0, "order", range(1, len(df) + 1))
-
-        st.info("ℹ️ order 컬럼을 수정해서 순서를 바꿔주세요.")
-        edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
-
-        if st.button("순서 적용 & 저장"):
-            sorted_df = edited_df.sort_values("order").reset_index(drop=True)
-            sorted_df.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
-            st.success("✅ 순서 반영 후 저장 완료")
-
-            insert_csv_to_db(sorted_df, table_name="parsed_docs")
-            st.success("📦 DB에도 저장 완료 ✅")
-    else:
-        st.info("parsed_docs.csv 파일이 없습니다. 먼저 업로드/파싱하세요.")
-
-    # -------------------------
-    # 1-8. DB 관리
+    # 1-7. DB 관리
     # -------------------------
     st.header("🗂️ DB 관리")
     if st.button("테이블 목록 보기"):
