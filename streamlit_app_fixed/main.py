@@ -191,3 +191,39 @@ if st.button("키워드별 정리 실행"):
         else:
             summary_by_kw = summarize_by_keywords(csv_text, keywords)
             st.text_area("키워드별 정리 결과", summary_by_kw, height=400)
+# =============================
+# 6. DB 관리
+# =============================
+st.header("🗂️ DB 관리")
+
+if st.button("테이블 목록 보기"):
+    tables = list_tables()
+    if tables:
+        st.write("📋 현재 DB 테이블 목록:")
+        st.write(tables)
+    else:
+        st.info("DB에 테이블이 없습니다.")
+
+# 테이블 선택 후 조회
+tables = list_tables()
+if tables:
+    selected_table = st.selectbox("조회할 테이블 선택", tables)
+    if st.button("테이블 불러오기"):
+        df = load_csv_from_db(selected_table)
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.warning("⚠️ 데이터가 없습니다.")
+
+# 테이블 삭제
+if tables:
+    del_table = st.selectbox("삭제할 테이블 선택", tables, key="delete_table")
+    if st.button("테이블 삭제"):
+        import sqlite3
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute(f"DROP TABLE IF EXISTS {del_table}")
+        conn.commit()
+        conn.close()
+        st.success(f"🗑️ {del_table} 테이블 삭제 완료")
+
