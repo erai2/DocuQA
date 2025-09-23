@@ -10,7 +10,8 @@ from core.database import (
     ensure_db,
     insert_csv_to_db,
     load_csv_from_db,
-    load_csv_files
+    load_csv_files,
+    list_tables,
 )
 from core.hybrid_search import hybrid_search
 from core.ai_engine import (
@@ -21,6 +22,7 @@ from core.ai_engine import (
     clean_text_with_ai,
 )
 from core.parsing import parse_and_store_documents
+from core.rag import build_databases
 
 # =============================
 # 초기 세팅
@@ -60,10 +62,7 @@ if uploaded_files:
             if parsed_df is not None and isinstance(parsed_df, pd.DataFrame) and not parsed_df.empty:
                 st.success("✅ 파싱 완료, AI 교정 적용 중...")
 
-                # DataFrame → CSV 문자열 변환
                 raw_text = parsed_df.to_csv(index=False, encoding="utf-8-sig")
-
-                # AI 교정
                 cleaned_text = clean_text_with_ai(raw_text)
 
                 try:
@@ -73,7 +72,7 @@ if uploaded_files:
                     cleaned_df = parsed_df
 
                 st.success("✅ AI 교정 완료! 아래에서 직접 수정 후 저장하세요.")
-                edited_df = st.data_editor(cleaned_df, num_rows="dynamic", width="stretch")
+                edited_df = st.data_editor(cleaned_df, num_rows="dynamic", use_container_width=True)
 
                 if st.button(f"{uploaded_file.name} 저장", key=f"save_{uploaded_file.name}"):
                     parsed_csv = "data/parsed_docs.csv"
@@ -86,7 +85,6 @@ if uploaded_files:
                     combined.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
                     st.success("📂 parsed_docs.csv 저장 완료 ✅")
 
-                    # 🔹 DB에도 반영
                     insert_csv_to_db(combined, table_name="parsed_docs")
                     st.success("📦 DB에도 저장 완료 ✅")
             else:
@@ -98,7 +96,6 @@ if uploaded_files:
 st.header("📂 CSV 데이터 관리")
 csv_dfs = load_csv_files("data")
 
-# 🔹 DB 불러오기 기능
 if st.button("DB에서 불러오기"):
     db_df = load_csv_from_db("parsed_docs")
     if db_df is not None and not db_df.empty:
@@ -111,7 +108,6 @@ else:
     for name, df in csv_dfs.items():
         st.subheader(f"📑 {name}.csv")
 
-        # 원본 CSV → 문자열 변환
         csv_text = df.to_csv(index=False, encoding="utf-8-sig")
 
         if st.button(f"{name}.csv AI 교정 적용", key=f"clean_{name}"):
@@ -123,14 +119,13 @@ else:
             except Exception as e:
                 st.error(f"AI 교정 후 CSV 변환 실패: {e}")
 
-        edited_df = st.data_editor(df, num_rows="dynamic", width="stretch")
+        edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
 
         if st.button(f"{name}.csv 저장", key=f"save_{name}"):
             save_path = f"data/{name}.csv"
             edited_df.to_csv(save_path, index=False, encoding="utf-8-sig")
             st.success(f"{name}.csv 저장 완료 ✅")
 
-            # DB에도 저장
             insert_csv_to_db(edited_df, table_name=name)
             st.success(f"📦 {name} → DB 저장 완료 ✅")
 
@@ -191,8 +186,47 @@ if st.button("키워드별 정리 실행"):
         else:
             summary_by_kw = summarize_by_keywords(csv_text, keywords)
             st.text_area("키워드별 정리 결과", summary_by_kw, height=400)
+
 # =============================
-# 6. DB 관리
+# 6. DB 빌드
+# =============================
+st.header("🛠️ 데이터베이스 빌드")
+
+if st.button("데이터베이스 빌드 실행"):
+    with st.spinner("문서를 파싱하고 DB/VectorDB를 빌드 중..."):
+        vs = build_databases(data_dir="data/raw_docs", db_dir="data/vector_db")
+    if vs:
+        st.success("✅ DB 및 VectorDB 빌드 완료")
+    else:
+        st.warning("⚠️ 빌드할 문서가 없습니다. data/raw_docs에 파일을 업로드하세요.")
+
+# =============================
+# 7. Parsed CSV 순서 조정
+# =============================
+st.header("📂 Parsed CSV 순서 조정")
+
+parsed_csv = "data/parsed_docs.csv"
+if os.path.exists(parsed_csv):
+    df = pd.read_csv(parsed_csv)
+
+    if "order" not in df.columns:
+        df.insert(0, "order", range(1, len(df) + 1))
+
+    st.info("ℹ️ order 컬럼을 수정해서 순서를 바꿔주세요.")
+    edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
+
+    if st.button("순서 적용 & 저장"):
+        sorted_df = edited_df.sort_values("order").reset_index(drop=True)
+        sorted_df.to_csv(parsed_csv, index=False, encoding="utf-8-sig")
+        st.success("✅ 순서 반영 후 저장 완료")
+
+        insert_csv_to_db(sorted_df, table_name="parsed_docs")
+        st.success("📦 DB에도 저장 완료 ✅")
+else:
+    st.info("parsed_docs.csv 파일이 아직 없습니다. 먼저 문서를 업로드/파싱하세요.")
+
+# =============================
+# 8. DB 관리 (list_tables 활용)
 # =============================
 st.header("🗂️ DB 관리")
 
@@ -204,10 +238,9 @@ if st.button("테이블 목록 보기"):
     else:
         st.info("DB에 테이블이 없습니다.")
 
-# 테이블 선택 후 조회
 tables = list_tables()
 if tables:
-    selected_table = st.selectbox("조회할 테이블 선택", tables)
+    selected_table = st.selectbox("조회할 테이블 선택", tables, key="view_table")
     if st.button("테이블 불러오기"):
         df = load_csv_from_db(selected_table)
         if not df.empty:
@@ -215,15 +248,12 @@ if tables:
         else:
             st.warning("⚠️ 데이터가 없습니다.")
 
-# 테이블 삭제
-if tables:
     del_table = st.selectbox("삭제할 테이블 선택", tables, key="delete_table")
     if st.button("테이블 삭제"):
         import sqlite3
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect("suri_m.db")  # DB_PATH와 동일해야 함
         cur = conn.cursor()
         cur.execute(f"DROP TABLE IF EXISTS {del_table}")
         conn.commit()
         conn.close()
         st.success(f"🗑️ {del_table} 테이블 삭제 완료")
-
