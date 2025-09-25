@@ -1,4 +1,5 @@
 .streamlit/secrets.toml
+streamlit_app_fixed/.streamlit/secrets.toml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -134,8 +135,7 @@ venv.bak/
 
 # Application data directories
 data/
-!suam_ai/data/
-!suam_ai/data/rules.json
+!streamlit_app_fixed/data/
 exports/
 keywords.json
 
