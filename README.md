@@ -1,68 +1,72 @@
-# 📘 AI 해석기 (DocuQA 확장)
+# 📘 DocuQA Streamlit Suite
 
-이 저장소는 기존 DocuQA 실험에 더해 **룰셋 + LLM 파이프라인**을 제공합니다. `suri_ai` 디렉터리에는 Streamlit UI와 FastAPI API 서버, 룰셋 로더가 포함되어 있으며, 배포 전 단계에서 오류 없이 실행할 수 있도록 구성되었습니다.
+이 저장소는 문서 업로드·파싱·검색을 한 번에 처리할 수 있는 **Streamlit 기반 Q&A 대시보드**를 제공합니다. `streamlit_app_fixed/` 디렉터리에는
+문서를 규칙 기반/AI 기반으로 파싱하고, 하이브리드 검색 및 OpenAI API를 활용한 분석 기능이 구현되어 있습니다.
 
-## 📂 구성
+최근 정리 과정에서 불필요한 `codex` 브랜치 산출물을 제거하고, 원래의 Streamlit 앱 기능을 보존하도록 파일 구조를 정리했습니다.
+
+## 📂 디렉터리 구조
 
 ```
 DocuQA/
-├── suri_ai/              # 수리 파이프라인 (주요 작업 디렉터리)
-│   ├── app.py            # Streamlit UI
-│   ├── main.py           # FastAPI 진입점
-│   ├── core/             # 룰셋/컨텍스트/LLM 유틸리티
-│   ├── data/rules.json   # 통합 룰셋 (예시 데이터)
-│   └── README.md         # 세부 실행 가이드
-├── streamlit_app_fixed/  # 기존 DocuQA 하이브리드 검색 예제 (옵션)
-├── .env.example          # 환경 변수 템플릿
-└── README.md             # 현재 문서
+├── streamlit_app_fixed/
+│   ├── main.py               # Streamlit 진입점 (문서 관리 + 인물 프로필)
+│   ├── profiles_page.py      # 인물 프로필 편집 페이지
+│   ├── core/                 # 파싱·AI·DB·검색 유틸리티 모음
+│   ├── data/                 # 예시 문서 및 벡터 DB가 저장되는 디렉터리
+│   └── requirements.txt      # 앱 실행에 필요한 패키지 목록
+├── .env.example              # OpenAI 키 템플릿 (실제 키는 .env에 저장)
+├── .gitignore                # 민감 정보 및 캐시 무시 규칙
+└── README.md                 # 현재 문서
 ```
 
-## 🔧 설치
+> 🔐 `streamlit_app_fixed/.streamlit/secrets.toml`과 `.env` 파일은 민감 정보를 담을 수 있으므로 Git에서 제외되어 있습니다.
+
+## 🔧 설치 및 환경 설정
+
+1. Python 3.10 이상의 가상환경을 생성합니다.
+2. 필수 패키지를 설치합니다.
 
 ```bash
-pip install -r suam_ai/requirements.txt
+pip install -r streamlit_app_fixed/requirements.txt
 ```
 
-필요한 패키지: `streamlit`, `fastapi`, `uvicorn`, `langchain`, `langchain-openai`, `openai`, `python-dotenv`, `pydantic`.
+3. 환경 변수 템플릿을 복사해 OpenAI API 키를 설정합니다.
 
-## 🔐 환경 변수 & 보안
+```bash
+cp .env.example .env
+# .env 파일을 열어 OPENAI_API_KEY 값을 실제 키로 수정하세요.
+```
 
-1. `.env.example`을 `.env`로 복사하고 `OPENAI_API_KEY`를 입력합니다.
-2. `.env`, `.streamlit/secrets.toml`은 `.gitignore`에 포함되어 민감 정보가 버전 관리에 노출되지 않습니다.
-3. 서버 배포 시에는 운영 환경 변수(예: Docker, Cloud Run)로 키를 주입하는 것을 권장합니다.
+필요 시 `streamlit_app_fixed/.streamlit/secrets.toml` 파일에 Streamlit 비밀 키를 추가할 수 있습니다. 해당 파일은 버전 관리에서 제외되어 있으므로
+배포 환경에서 직접 작성하세요.
 
 ## ▶️ 실행 방법
 
-### Streamlit UI
+아래 명령으로 Streamlit 대시보드를 실행할 수 있습니다.
+
 ```bash
-streamlit run suam_ai/app.py
+streamlit run streamlit_app_fixed/main.py
 ```
 
-### FastAPI 서버
-```bash
-uvicorn suam_ai.main:app --reload --host 0.0.0.0 --port 8000
-```
+대시보드는 다음과 같은 기능을 제공합니다.
 
-- `/health`: 상태 확인
-- `/ask`: 질문/사주 데이터를 POST로 전달하여 분석 결과 수신
-- `deterministic=true` 옵션으로 룰셋 기반 요약만 받을 수 있습니다.
+- **문서 업로드 및 파싱**: txt/md 파일을 규칙 기반, AI 보조, 하이브리드 방식으로 구조화합니다.
+- **AI 교정 및 요약**: OpenAI API를 사용해 파싱 결과를 정리하고 CSV 요약·키워드 정리를 수행합니다.
+- **하이브리드 검색**: TF-IDF와 벡터 검색을 조합해 관련 문서를 탐색합니다.
+- **인물 프로필 관리**: `profiles_page.py`에서 인물 정보를 CRUD 방식으로 관리할 수 있습니다.
 
 ## 🧪 테스트
 
+앱이 사용하는 모듈이 정상적으로 컴파일되는지 확인하려면 다음 명령을 실행하세요.
+
 ```bash
-python -m compileall suam_ai
+python -m compileall streamlit_app_fixed
 ```
 
-컴파일이 통과하면 주요 스크립트가 문법 오류 없이 배포 준비 상태임을 의미합니다.
+추가적인 테스트 스크립트나 CI가 필요하다면 `streamlit_app_fixed/core` 모듈을 기준으로 확장할 수 있습니다.
 
-## 🛠️ 개선 사항 요약
+## 📄 참고
 
-- 프로젝트 구조를 `suam_ai` 기준으로 재정리하고, import 경로를 표준화했습니다.
-- `rules_loader`, `context_builder`, `llm_chain`, `analyzer`를 분리하여 유지보수를 용이하게 했습니다.
-- LLM 호출 실패 시 룰셋 기반 요약으로 자동 대체하도록 예외 처리를 강화했습니다.
-- `.env` 템플릿과 `.gitignore` 규칙을 정비하여 민감 정보가 안전하게 관리됩니다.
-
-## 📄 추가 참고
-
-- `suam_ai/README.md`에서 상세 가이드를 확인하세요.
-- 기존 `streamlit_app_fixed` 폴더는 레거시 하이브리드 검색 대시보드 예제로 남아 있으며 필요 시 참고할 수 있습니다.
+- `.env`와 `.streamlit` 내부 파일은 반드시 로컬/배포 환경에서만 관리하여 보안을 유지하세요.
+- `streamlit_app_fixed/data` 폴더에는 예시 문서를 제공합니다. 실제 서비스 환경에서는 적절한 저장소나 DB로 대체하세요.
