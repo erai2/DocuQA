@@ -1,20 +1,30 @@
-import re
 from core.ai_utils import clean_text_with_ai
+from core.text_parsing_utils import (
+    classify_paragraph,
+    format_with_section,
+    iter_structured_paragraphs,
+)
+
 
 def parse_document_ml(text: str):
-    """
-    AI 보조 파서
-    """
-    chunks = re.split(r'\n+', text)
+    """AI 보조 파서 (자연어 문단 기반)"""
+
     cases, rules, concepts = [], [], []
 
-    for idx, chunk in enumerate(chunks):
-        cleaned = clean_text_with_ai(chunk)[:1000]
-        if "사례" in chunk or "예시" in chunk:
-            cases.append({"id": f"ml_case_{idx}", "detail": cleaned})
-        elif "규칙" in chunk or "조건" in chunk:
-            rules.append({"id": f"ml_rule_{idx}", "desc": cleaned})
-        elif "정의" in chunk or "개념" in chunk:
-            concepts.append({"id": f"ml_concept_{idx}", "desc": cleaned})
+    for idx, record in enumerate(iter_structured_paragraphs(text)):
+        paragraph = record.get("paragraph", "").strip()
+        if not paragraph:
+            continue
+        section = record.get("section")
+        category = classify_paragraph(paragraph, section)
+        cleaned = clean_text_with_ai(paragraph)[:1000]
+        formatted = format_with_section(cleaned, section)
+
+        if category == "case":
+            cases.append({"id": f"ml_case_{idx}", "detail": formatted})
+        elif category == "rule":
+            rules.append({"id": f"ml_rule_{idx}", "desc": formatted})
+        else:
+            concepts.append({"id": f"ml_concept_{idx}", "desc": formatted})
 
     return cases, rules, concepts

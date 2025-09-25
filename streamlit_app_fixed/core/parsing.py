@@ -1,20 +1,34 @@
 # core/parsing.py
-import re
 import pandas as pd
 
+from core.text_parsing_utils import (
+    classify_paragraph,
+    format_with_section,
+    iter_structured_paragraphs,
+)
+
+
 def parse_document(text: str):
-    """규칙 기반 파서"""
+    """규칙 기반 파서 (자연어 문단 기반)"""
+
     rules, cases, concepts = [], [], []
+    counts = {"case": 0, "rule": 0, "concept": 0}
 
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    for record in iter_structured_paragraphs(text):
+        paragraph = record.get("paragraph", "").strip()
+        if not paragraph:
+            continue
+        section = record.get("section")
+        category = classify_paragraph(paragraph, section)
+        counts[category] += 1
+        formatted = format_with_section(paragraph, section)
 
-    for line in lines:
-        if any(kw in line for kw in ["合", "沖", "冲", "刑", "破", "穿", "入墓", "墓庫"]):
-            rules.append({"id": f"rule_{len(rules)+1}", "desc": line})
-        elif re.search(r"[甲乙丙丁戊己庚辛壬癸].*[子丑寅卯辰巳午未申酉戌亥]", line):
-            cases.append({"id": f"case_{len(cases)+1}", "detail": line})
-        elif any(kw in line for kw in ["祿", "元神", "原神", "帶象", "幻象", "空亡", "驛馬"]):
-            concepts.append({"id": f"concept_{len(concepts)+1}", "desc": line})
+        if category == "case":
+            cases.append({"id": f"case_{counts['case']}", "detail": formatted})
+        elif category == "rule":
+            rules.append({"id": f"rule_{counts['rule']}", "desc": formatted})
+        else:
+            concepts.append({"id": f"concept_{counts['concept']}", "desc": formatted})
 
     return cases, rules, concepts
 
