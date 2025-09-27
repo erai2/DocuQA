@@ -18,7 +18,6 @@ from core.database import (
     load_csv_from_db,
     list_tables,
 )
-from core.hybrid_search import hybrid_search
 from core.rag import build_databases
 from profiles_page import profiles_page
 
