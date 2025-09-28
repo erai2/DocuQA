@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from io import StringIO
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Sequence
 
 import pandas as pd
 import streamlit as st
@@ -69,17 +69,54 @@ def ensure_directories(paths: Iterable[str]) -> None:
 
 
 def render_document_management_page() -> None:
-    """Render the document management workflow."""
+    """Render the 관리 허브 using tabbed sections for clarity."""
 
-    render_upload_section()
-    render_db_preview_section()
-    render_rule_case_dashboard()
-    render_csv_summary_section()
-    render_keyword_summary_section()
-    render_chatbot_workflow_section()
-    render_ai_consultation_section()
-    render_database_build_section()
-    render_database_management_section()
+    st.caption(
+        "문서 업로드부터 상담 답변까지 전체 흐름을 탭으로 분리해 한눈에 관리할 수 있습니다."
+    )
+
+    section_groups: Sequence[Dict[str, object]] = [
+        {
+            "label": "📥 문서 정제",
+            "description": "원본 문서를 업로드하고 파싱·AI 교정 후 지식베이스에 반영합니다.",
+            "sections": [render_upload_section, render_database_build_section],
+        },
+        {
+            "label": "📚 지식 베이스",
+            "description": "DB에 적재된 규칙·사례를 검토하고 대시보드로 탐색합니다.",
+            "sections": [render_db_preview_section, render_rule_case_dashboard],
+        },
+        {
+            "label": "🧾 요약 & 리포트",
+            "description": "CSV 기반 요약과 키워드 정리를 통해 핵심 내용을 빠르게 파악합니다.",
+            "sections": [render_csv_summary_section, render_keyword_summary_section],
+        },
+        {
+            "label": "🤖 상담 워크플로",
+            "description": "수암 명리 3단계 상담 로직과 AI 응답을 시험해 봅니다.",
+            "sections": [render_chatbot_workflow_section, render_ai_consultation_section],
+        },
+        {
+            "label": "🗄️ 데이터 관리",
+            "description": "DB 테이블을 점검하고 필요 시 정리합니다.",
+            "sections": [render_database_management_section],
+        },
+    ]
+
+    tabs = st.tabs([group["label"] for group in section_groups])
+    for tab, group in zip(tabs, section_groups):
+        with tab:
+            description = group.get("description")
+            if description:
+                st.caption(str(description))
+
+            sections = group.get("sections", [])
+            for index, section in enumerate(sections):
+                with st.container():
+                    section()
+
+                if index < len(sections) - 1:
+                    st.divider()
 
 
 def render_upload_section() -> None:
