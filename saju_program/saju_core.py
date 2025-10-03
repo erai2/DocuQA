@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 class HeavenlyStem:
     """Represents one of the ten heavenly stems (천간)."""
 
