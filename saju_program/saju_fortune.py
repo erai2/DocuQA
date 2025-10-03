@@ -1,10 +1,8 @@
 """Fortune analysis (대운/세운) scaffolding for future extensions."""
 
 from __future__ import annotations
-
 from .saju_core import Pillar
 from .saju_model import Saju
-
 
 class SajuFortuneAnalyzer:
     """Placeholder analyzer for 운 analysis and interaction detection."""
