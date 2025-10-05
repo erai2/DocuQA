@@ -44,7 +44,7 @@ uvicorn suam_ai.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 - `/health`: 상태 확인
-- `/ask`: 질문/사주 데이터를 POST로 전달하여 분석 결과 수신
+- `/ask`: 질문/데이터를 POST로 전달하여 분석 결과 수신
 - `deterministic=true` 옵션으로 룰셋 기반 요약만 받을 수 있습니다.
 
 ## 🧪 테스트
