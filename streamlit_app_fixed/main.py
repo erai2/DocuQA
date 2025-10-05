@@ -93,7 +93,7 @@ def render_document_management_page() -> None:
         },
         {
             "label": "🤖 상담 워크플로",
-            "description": "수암 명리 3단계 상담 로직과 AI 응답을 시험해 봅니다.",
+            "description": "3단계 로직과 AI 응답을 시험해 봅니다.",
             "sections": [render_chatbot_workflow_section, render_ai_consultation_section],
         },
         {
