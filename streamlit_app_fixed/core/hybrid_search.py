@@ -13,7 +13,17 @@ from core.rag import search_vector_db
 try:  # langchain 0.1+
     from langchain.schema import Document
 except ImportError:  # pragma: no cover - compatibility for older langchain
-    from langchain.docstore.document import Document  # type: ignore
+    try:
+        from langchain.docstore.document import Document  # type: ignore
+    except ImportError:  # pragma: no cover - fallback when langchain isn't installed
+        from dataclasses import dataclass, field
+
+        @dataclass
+        class Document:  # type: ignore[override]
+            """Minimal fallback Document structure used when langchain is unavailable."""
+
+            page_content: str
+            metadata: dict = field(default_factory=dict)
 
 
 DEFAULT_TABLE = "parsed_docs"
