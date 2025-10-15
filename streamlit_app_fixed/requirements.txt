@@ -5,3 +5,5 @@ langchain
 langchain-community
 chromadb
 scikit-learn
+PyPDF2
+python-docx
